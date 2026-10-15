@@ -54,8 +54,8 @@ identical except the outcome, plus a control, your judge's rubric in `question` 
 system prompt, if it has one, in `system` - it is sent unchanged. Then
 run `python3 outcome_probe.py <model> --fixture fixtures/<yours>.json`. Every field is explained in the
 walkthrough's [fixture format](docs/walkthrough.md#fixture-format) table. The probe reads answers that start with
-`FIELD: value` lines. If your judge answers in JSON or a single number, keep it as it is and add a parser for its
-format, like `parse_geval_score` in `scorer.py` for G-Eval's JSON, rather than changing its prompt. To keep a run as evidence, use
+`FIELD: value` lines. If your judge answers in JSON, keep its prompt as it is: the walkthrough shows the
+[three small changes](docs/walkthrough.md#if-your-judge-answers-in-json). To keep a run as evidence, use
 `scripts/run-evidence.sh <name> --eta "<est>" --cost "<est>" -- python3 outcome_probe.py <model>`. It writes the
 full log and never overwrites an existing one.
 

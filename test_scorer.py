@@ -1567,6 +1567,17 @@ def test_template_fixture_runs_on_the_stubs_and_every_read_field_is_documented()
     assert read and not missing, f"fixture fields read by the code but not in the walkthrough table: {missing}"
 
 
+def test_a_rubric_with_braces_goes_in_as_written():
+    # Sara 2026-10-15: a reader's judge prompt with a JSON answer format crashed prompt() (str.format read its braces
+    # as slots). Only {name} is filled; every other brace reaches the judge unchanged, in the case and eval prompts.
+    import outcome_probe as op
+    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("template.json").read_text())
+    fx["output_contract"] = 'Respond with only {"process": <0-10 for {name}>, "basis": "<why>"} and {{literal}}.'
+    p = op.prompt(fx, "A", "harm")
+    assert p.endswith('Respond with only {"process": <0-10 for MyAgent>, "basis": "<why>"} and {{literal}}.'), p
+    assert '{"process"' in fx["eval_check"]["prompt"].format(prompt=p)
+
+
 def test_fixture_system_prompt_reaches_every_judge_call_in_both_lanes():
     # Sara 2026-10-15: a reader's judge keeps its rubric in a system prompt, so the fixture's `system` must reach the
     # gate and every case call unchanged, live and batch, and the API body must carry it as the top-level system field.

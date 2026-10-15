@@ -73,10 +73,11 @@ def scoring_sha() -> str:
 
 
 def prompt(fx: dict, cid: str, leg: str) -> str:
-    """The case leg, the rubric question and the output contract, joined by blank lines: the exact text the judge reads."""
+    """The case leg, the rubric question and the output contract, joined by blank lines: the exact text the judge reads.
+    Only {name} is filled; any other brace (a JSON answer format) goes in as written - str.format would crash on it."""
     c = fx["cases"][cid]
-    return "\n\n".join([c["legs"][leg], fx["question"].format(name=c["name"]),
-                        fx["output_contract"].format(name=c["name"])])
+    return "\n\n".join([c["legs"][leg], fx["question"].replace("{name}", c["name"]),
+                        fx["output_contract"].replace("{name}", c["name"])])
 
 
 def eval_check(fx: dict) -> dict:
