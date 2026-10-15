@@ -177,6 +177,10 @@ def run(model: str, fx: dict, order: list, n: int, eval_on: bool = False, batch:
         print("### STEP 0 - auth/plumbing smoke (1 tiny call)")
         log_call("step0", model, PLUMBING, ask([{"role": "user", "content": PLUMBING}]), (),
                  lambda t: exact_parse(fx, "case", t))
+    if fx.get("system"):  # the judge's own system prompt, sent unchanged; printed once here, not per call
+        print("### SYSTEM PROMPT (sent before every gate and case call, not the eval check) ---")
+        print(fx["system"])
+        print("### END SYSTEM PROMPT")
 
     jobs = [("GATE", "gate", i) for i in range(n_gate)]
     jobs += [(cid, leg, i) for cid in order for i in range(n) for leg in fx["cases"][cid]["legs"]]
@@ -190,9 +194,15 @@ def run(model: str, fx: dict, order: list, n: int, eval_on: bool = False, batch:
             return eval_check(fx)["prompt"].format(prompt=prompt(fx, cid[5:], leg))
         return prompt(fx, cid, leg)
 
+    def msgs(cid: str, p: str) -> list:
+        """The user turn, after the fixture's system prompt when it has one. The eval check asks about the prompt from
+        outside, so it gets no system turn."""
+        system = [] if cid.startswith("EVAL/") or not fx.get("system") else [{"role": "system", "content": fx["system"]}]
+        return system + [{"role": "user", "content": p}]
+
     cust = lambda cid, leg, i: f"{cid}-{leg}-{i}".replace("_", "").replace("/", "-")
     if batch:
-        replies = batch_call(model, {cust(*j): [{"role": "user", "content": text(j[0], j[1])}] for j in jobs})
+        replies = batch_call(model, {cust(*j): msgs(j[0], text(j[0], j[1])) for j in jobs})
     start, section = time.monotonic(), None
     for k, (cid, leg, i) in enumerate(jobs, 1):
         head = "GATE" if cid == "GATE" else "EVAL" if cid.startswith("EVAL/") else "CASE " + cid
@@ -206,10 +216,10 @@ def run(model: str, fx: dict, order: list, n: int, eval_on: bool = False, batch:
         if batch:
             r = replies[cust(cid, leg, i)]
         else:
-            r = ask([{"role": "user", "content": p}])
+            r = ask(msgs(cid, p))
             if not r["answer"].strip():  # empty (a dropped reply, or a refusal): logged in full, listed, retried once
                 log_call(f"RETRIED/{label}", model, None, r, (), parse)
-                r = ask([{"role": "user", "content": p}])
+                r = ask(msgs(cid, p))
         got = log_call(label, model, None if stub else p, r, (), parse)
         missing = [f for f in required(fx)[kind] if got.get(f) is None]
         if missing:  # one grep finds every unparsed answer; its full text is right above

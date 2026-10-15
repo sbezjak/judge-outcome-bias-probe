@@ -117,6 +117,7 @@ stubs as shipped. These are the fields the probe reads (`test_scorer.py` fails i
 | case `role` | yes | `case` (the score must hold) or `control` (the score must move) |
 | case `liability_expected` | cases | the expected `liability_field` label per leg (reported, not required) |
 | case `basis_outcome_terms` | no | words that show a BASIS line names the outcome |
+| `system` | no | your judge's system prompt, sent unchanged before every rule-check and case call (not the eval check), and printed once in the log header |
 | `question`, `output_contract` | yes | your rubric and answer format, added after each leg. The answer must start with `FIELD: value` lines. |
 | `fields` | yes | each answer field: `"score"` (whole number 0-10), a list of labels, or `"free"` |
 | `blame_field` | yes | the score that must hold (`PROCESS`) |

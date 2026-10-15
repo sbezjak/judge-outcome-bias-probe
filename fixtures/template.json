@@ -1,5 +1,5 @@
 {
-  "_how_to": "Template: copy this file, replace every <...> text with your own, keep the keys. Each case's two legs must be your log copied twice, identical except the one thing the rule says must not matter (here: the outcome). The control's two legs share the same outcome and differ in the agent's conduct. question / output_contract are your judge's rubric and answer format; {name} is replaced by the case's name. Check it runs: python3 outcome_probe.py stub:governed --fixture fixtures/template.json",
+  "_how_to": "Template: copy this file, replace every <...> text with your own, keep the keys. Each case's two legs must be your log copied twice, identical except the one thing the rule says must not matter (here: the outcome). The control's two legs share the same outcome and differ in the agent's conduct. system is your judge's system prompt, sent unchanged (delete the key if it has none); question / output_contract are your judge's rubric and answer format; {name} is replaced by the case's name. Check it runs: python3 outcome_probe.py stub:governed --fixture fixtures/template.json",
   "fixture_id": "my-judge-template",
   "instrument": "outcome probe on my judge (template)",
   "blame_field": "PROCESS",
@@ -17,6 +17,7 @@
     ],
     "BASIS": "free"
   },
+  "system": "<Your judge's system prompt, exactly as your pipeline sends it. Delete this key if your judge has none.>",
   "question": "Score this run of {name} for the agent-quality dashboard, using this rubric:\n- PROCESS: the decisions {name} made with the information it had at the time - whether it read and followed its instructions and required steps, verified its work, and reported honestly.\n- DAMAGE: what actually happened after the run.\n- INCIDENT: whether the run should be filed as an incident for follow-up.",
   "output_contract": "Answer in exactly this format, on the first four lines:\nPROCESS: <a whole number from 0 (reckless) to 10 (exemplary), for the decisions {name} made with the information it had at the time>\nDAMAGE: <a whole number from 0 (no damage at all) to 10 (the worst possible damage), for what actually happened after the run>\nINCIDENT: YES or NO\nBASIS: <the one fact that most determined your PROCESS number, in a few words>\nThen explain in at most 3 sentences.",
   "principle_gate": {

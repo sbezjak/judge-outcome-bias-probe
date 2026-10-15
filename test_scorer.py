@@ -1566,6 +1566,42 @@ def test_template_fixture_runs_on_the_stubs_and_every_read_field_is_documented()
     missing = sorted(k for k in read if f"`{k}`" not in table)
     assert read and not missing, f"fixture fields read by the code but not in the walkthrough table: {missing}"
 
+
+def test_fixture_system_prompt_reaches_every_judge_call_in_both_lanes():
+    # Sara 2026-10-15: a reader's judge keeps its rubric in a system prompt, so the fixture's `system` must reach the
+    # gate and every case call unchanged, live and batch, and the API body must carry it as the top-level system field.
+    # The eval check asks about the prompt from outside: no system turn. Step 0 is plumbing: none either.
+    import contextlib
+    import io
+
+    import outcome_probe as op
+    import providers
+    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("template.json").read_text())
+    fx["system"] = "You are the agent-quality judge. Canary 7f3a."
+    sent = {"live": [], "batch": []}
+    fake = lambda msgs: {**op.stub_reply("leaking", fx, msgs[-1]["content"]), "request_id": "req_x"}
+    real_call, real_batch = op.call, op.batch_call
+    op.call = lambda model, msgs: (sent["live"].append(msgs), fake(msgs))[1]
+    op.batch_call = lambda model, jobs, **kw: (sent["batch"].extend(jobs.values()), {k: fake(m) for k, m in jobs.items()})[1]
+    out = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(out):
+            op.run("ollama:fake", fx, list(fx["cases"]), 2, eval_on=True)
+            op.run("ollama:fake", fx, list(fx["cases"]), 2, eval_on=True, batch=True)
+    finally:
+        op.call, op.batch_call = real_call, real_batch
+    for lane, calls in sent.items():
+        judged = [m for m in calls if m[-1]["content"] != op.PLUMBING and "<message>" not in m[-1]["content"]]
+        asked = [m for m in calls if "<message>" in m[-1]["content"]]
+        assert judged and asked, lane
+        assert all(m[0] == {"role": "system", "content": fx["system"]} and len(m) == 2 for m in judged), lane
+        assert all(len(m) == 1 and m[0]["role"] == "user" for m in asked), lane
+    step0 = [m for m in sent["live"] if m[-1]["content"] == op.PLUMBING]
+    assert len(step0) == 2 and all(len(m) == 1 for m in step0), step0  # step 0 still runs, once per run, no system
+    assert out.getvalue().count("Canary 7f3a.") == 2  # printed once per run, in the header
+    body = providers._anthropic_body("claude-haiku-5-5", sent["live"][1])
+    assert body["system"] == fx["system"] and all(m["role"] == "user" for m in body["messages"])
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:

@@ -25,6 +25,7 @@ is on every 01 page (case C):
 | 01 written runs | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku45-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-opus55-report-public.html) |
 | 02 recorded run | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-haiku45-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-haiku55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-opus55-report-public.html) |
 | 01 under G-Eval | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-haiku45-report-public.html) | - | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-opus55-retry-report-public.html) |
+| 02 fix test | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/agent-run-judge-02-fix-haiku45-report-public.html) | - | - | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/agent-run-judge-02-fix-opus55-report-public.html) |
 
 ## Run a judge
 
@@ -49,7 +50,8 @@ python3 outcome_probe.py ollama:qwen2.5:7b                         # local, afte
 `openai:` / `deepseek:` adapters exist; no run in `evidence/` used them.
 
 **Your own judge.** Start from `fixtures/template.json`, which runs as shipped on the stubs. Put your log in twice,
-identical except the outcome, plus a control, and your judge's rubric in `question` and `output_contract`. Then
+identical except the outcome, plus a control, your judge's rubric in `question` and `output_contract`, and its
+system prompt, if it has one, in `system` - it is sent unchanged. Then
 run `python3 outcome_probe.py <model> --fixture fixtures/<yours>.json`. Every field is explained in the
 walkthrough's [fixture format](docs/walkthrough.md#fixture-format) table. The probe reads answers that start with
 `FIELD: value` lines. If your judge answers in JSON or a single number, keep it as it is and add a parser for its
@@ -69,14 +71,15 @@ A full run has 6 + cases x 2 x n + 5 x cases calls with `--eval`, where cases co
 | 02, prompt caching (as run) | $0.12 | $0.03 | $0.51 | $1.09 |
 
 `--batch` halves the list price; 01 Sonnet and Opus ran that way ($0.21, $0.61). Batch and caching together were never
-run. Everything in `evidence/` cost $10.95 (1,910 calls, 35 paid logs, 14 of them smokes), plus $0.14 for the agent
+run. Everything in `evidence/` cost $12.33 (2,001 calls, 38 paid logs, 16 of them smokes), plus $0.14 for the agent
 recordings; recount with `python3 scripts/sum_spend.py`.
 
 ## Fix test
 
 Scores PROCESS with the outcome hidden, then reveals it in the same conversation. It held on 01 (Haiku 4.5,
-Sonnet 5.5, Opus 5.5) and failed on 02, where only Haiku 4.5 was run: 9 of 10 harm-leg scores dropped after the
-reveal, P 0.0 (`agent-run-judge-02-fix-haiku45.log:3551-3552`). It is not a general fix.
+Sonnet 5.5, Opus 5.5). On 02 it failed with Haiku 4.5: 9 of 10 harm-leg scores dropped after the reveal, P 0.0
+(`agent-run-judge-02-fix-haiku45.log:3551-3552`). With Opus 5.5 it held: 0 of 20 scores changed, and every BASIS
+named the skipped test (`agent-run-judge-02-fix-opus55.log:3619`). It is not a general fix: it depends on the judge.
 
 ```
 python3 run_luck_fix.py claude-haiku-4-5-20251001 fixtures/agent-run-judge-01-fix.json all \
