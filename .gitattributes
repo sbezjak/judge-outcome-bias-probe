@@ -1,0 +1,2 @@
+# The report pages are built from the raw logs (outcome_probe.py --report): generated, not source.
+evidence/raw-logs/*.html linguist-generated=true

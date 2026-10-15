@@ -1,120 +1,113 @@
 # judge-outcome-bias-probe
 
-Does an LLM judge's score of an agent's decisions move when only the outcome moves?
+Tests whether an LLM judge's score of an agent's decision (PROCESS, 0-10) moves when only the outcome moves. Each
+case is one agent run as two versions that are byte-identical except the outcome. A control varies the conduct, so
+the score must move there. Scoring is judge-free (`scorer.py`). Code walkthrough:
+[`docs/walkthrough.md`](docs/walkthrough.md).
 
-The probe gives a judge model one agent run twice. The two prompts are byte-identical except for the outcome
-(the run went fine, or it caused harm). The judge scores the agent's decisions (PROCESS, 0-10). The judge's
-own rule says the outcome should not change that score, and the probe asks the judge its rule first, so a leak
-is the judge breaking a rule it stated. A control case changes the agent's conduct instead, so the score has
-to move there; that proves the instrument can see a move at all.
-
-Scoring is judge-free: every number is read from the first lines of the judge's answer by string matching
-(`scorer.py`), never by a second model. Before every run, two scripted stubs go through the same loop: one that
-leaks (must be flagged on every case) and one that does not (must be flagged on none). If either stub is
-misread, or the control does not move, no verdict is printed.
-
-## Quick start (no API key, no network)
-
-The probe itself needs only `python3` (standard library).
+## Quick start (python3 only, no key)
 
 ```
-git clone https://github.com/sbezjak/judge-outcome-bias-probe.git
-cd judge-outcome-bias-probe
-python3 test_scorer.py                    # the scorer's checks, no model: "90 checks passed"
-python3 outcome_probe.py stub:governed    # a full probe run on the two scripted stubs
-```
-
-The stub run prints `instrument gate passed` and writes its log and report page to `probe-runs/`.
-
-Rebuild a shipped report page from its raw log, and check that only the build date changed:
-
-```
+git clone https://github.com/sbezjak/judge-outcome-bias-probe.git && cd judge-outcome-bias-probe
+python3 test_scorer.py                    # 91 checks, no model
+python3 outcome_probe.py stub:governed    # full run on scripted judges -> probe-runs/
 python3 outcome_probe.py --report evidence/raw-logs/outcome-probe-agent-run-judge-01-opus55.log
-git diff --word-diff                      # only the "report built" date differs
-git checkout -- evidence
+git diff --word-diff && git checkout -- evidence    # rebuilt page: at most the build date differs
 ```
 
-For the recorded-run fixture add `--fixture fixtures/agent-run-judge-02.json`.
+## Report pages
 
-## Run it on a real judge
+Each page shows every answer with its request id and raw log line. The support-agent case the article opens with
+is on every 01 page (case C):
 
-Keys come from the environment, or from a `.env` file at the repo root (ignored by git). They are never printed.
+| | Haiku 4.5 | Haiku 5.5 | Sonnet 5.5 | Opus 5.5 |
+|---|---|---|---|---|
+| 01 written runs | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku45-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-opus55-report-public.html) |
+| 02 recorded run | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-haiku45-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-haiku55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-opus55-report-public.html) |
+| 01 under G-Eval | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-haiku45-report-public.html) | - | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-opus55-retry-report-public.html) |
+
+## Run a judge
+
+Keys come from the environment or a `.env` file at the repo root, and are never printed.
 
 ```
 export ANTHROPIC_API_KEY=...
-python3 outcome_probe.py claude-haiku-4-5-20251001                 # default fixture: agent-run-judge-01
+python3 outcome_probe.py claude-haiku-4-5-20251001                 # fixture agent-run-judge-01 (default)
 python3 outcome_probe.py claude-sonnet-5-5 --fixture fixtures/agent-run-judge-02.json
+python3 outcome_probe.py ollama:qwen2.5:7b                         # local, after `ollama pull qwen2.5:7b`
 ```
 
-Options: `--n 10` scores per prompt (default from the fixture; fewer is a smoke run, reported as "not a
-result"), `--cases A,D` a subset (the control D is
-required), `--batch` uses Anthropic Message Batches (half price, slower), `--eval` also asks the judge, in
-separate calls, whether each prompt reads as a test. `--reading` writes the full reading page instead of the
-public one.
+| option | |
+|---|---|
+| `--n N` | scores per version, default 10 (the floor; fewer is reported as "smoke run, not a result") |
+| `--cases C,D` | subset; control D required |
+| `--eval` | also asks whether each prompt reads as a test |
+| `--batch` | Message Batches, half price |
+| `RUN_PROMPT_CACHE=1` | env var: prompt caching |
+| `--reading` | full reading page instead of the public one |
 
-Free and local, with [Ollama](https://ollama.com) running on its default port:
+`openai:` / `deepseek:` adapters exist; no run in `evidence/` used them.
+
+**Your own judge.** Start from `fixtures/template.json`, which runs as shipped on the stubs. Put your log in twice,
+identical except the outcome, plus a control, and your judge's rubric in `question` and `output_contract`. Then
+run `python3 outcome_probe.py <model> --fixture fixtures/<yours>.json`. Every field is explained in the
+walkthrough's [fixture format](docs/walkthrough.md#fixture-format) table. The probe reads answers that start with
+`FIELD: value` lines. If your judge answers in JSON or a single number, keep it as it is and add a parser for its
+format, like `parse_geval_score` in `scorer.py` for G-Eval's JSON, rather than changing its prompt. To keep a run as evidence, use
+`scripts/run-evidence.sh <name> --eta "<est>" --cost "<est>" -- python3 outcome_probe.py <model>`. It writes the
+full log and never overwrites an existing one.
+
+## Cost
+
+A full run has 6 + cases x 2 x n + 5 x cases calls with `--eval`, where cases counts the control: 106 for 01
+(3 cases + control) and 56 for 02 (1 case + control, 16-19k-token prompts). Prices are from the logs' token counts at n = 10:
+
+| | Haiku 4.5 | Haiku 5.5 | Sonnet 5.5 | Opus 5.5 |
+|---|---|---|---|---|
+| 01, list price | $0.16 | $0.02 | $0.42 | $1.23 |
+| 02, list price | $0.70 | $0.09 | $1.76 | $3.74 |
+| 02, prompt caching (as run) | $0.12 | $0.03 | $0.51 | $1.09 |
+
+`--batch` halves the list price; 01 Sonnet and Opus ran that way ($0.21, $0.61). Batch and caching together were never
+run. Everything in `evidence/` cost $10.95 (1,910 calls, 35 paid logs, 14 of them smokes), plus $0.14 for the agent
+recordings; recount with `python3 scripts/sum_spend.py`.
+
+## Fix test
+
+Scores PROCESS with the outcome hidden, then reveals it in the same conversation. It held on 01 (Haiku 4.5,
+Sonnet 5.5, Opus 5.5) and failed on 02, where only Haiku 4.5 was run: 9 of 10 harm-leg scores dropped after the
+reveal, P 0.0 (`agent-run-judge-02-fix-haiku45.log:3551-3552`). It is not a general fix.
 
 ```
-ollama pull qwen2.5:7b
-python3 outcome_probe.py ollama:qwen2.5:7b
-```
-
-`openai:<model>` and `deepseek:<model>` adapters exist in `providers.py`, but no run in `evidence/` used them.
-
-To keep a run as evidence, capture its full output with the wrapper. It refuses to start without an estimate
-of time and cost, and never overwrites an existing log:
-
-```
-scripts/run-evidence.sh agent-run-judge-01-mymodel --eta "~20 min (106 calls)" --cost "~\$0.50 (106 calls)" \
-  -- python3 outcome_probe.py <model>
-```
-
-The measured cost of every run in `evidence/`, per log: `python3 scripts/sum_spend.py --rows agent-run-judge`.
-
-## The fix test
-
-Does scoring the decisions before the outcome is known stop the leak? `run_luck_fix.py` asks for the
-PROCESS score first, then reveals the outcome in the same conversation. The separate-evaluation baseline is the
-model's existing probe log, read back, never re-run.
-
-```
-python3 run_luck_fix.py stub:governed fixtures/agent-run-judge-01-fix.json all       # no network
 python3 run_luck_fix.py claude-haiku-4-5-20251001 fixtures/agent-run-judge-01-fix.json all \
-  --baseline=evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku45.log
+  --baseline=evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku45.log    # stub:governed: no network
 python3 fix_report.py <fix log> fixtures/agent-run-judge-01-fix.json --baseline=<probe log>
 ```
 
-## The same probe on an off-the-shelf judge (G-Eval)
+## G-Eval
 
-`geval_probe.py` runs DeepEval's G-Eval metric as installed; only the transport is the probe's, so every call
-is logged. It needs `deepeval` in a virtual environment, with telemetry off:
+DeepEval's G-Eval as the judge, with every call logged. `--gate-log` is the same model's probe log.
 
 ```
 python3 -m venv .venv && .venv/bin/pip install -r requirements-geval.txt
-env -u CONFIDENT_API_KEY DEEPEVAL_TELEMETRY_OPT_OUT=1 .venv/bin/python geval_probe.py stub:governed \
-  --gate-log evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku45.log           # no network
 env -u CONFIDENT_API_KEY DEEPEVAL_TELEMETRY_OPT_OUT=1 .venv/bin/python geval_probe.py claude-haiku-4-5-20251001 \
-  --gate-log evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku45.log
+  --gate-log evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku45.log    # stub:governed: no network
 ```
 
-`--gate-log` is the same model's probe log: the rule check is read from it, not asked again.
+## Layout
 
-## What is in the repo
-
-| path | what |
+| path | |
 |---|---|
-| `outcome_probe.py` | the probe: stubs, rule check, interleaved legs, verdict, report page |
-| `scorer.py` | judge-free parsing, pairwise P, the instrument gate, the verdict wording |
-| `providers.py` | the HTTP layer (Anthropic native, one OpenAI-compatible adapter for Ollama / OpenAI / DeepSeek) and the log format |
-| `public_report.py` | the public report page, built only from the log |
-| `run_luck_fix.py`, `fix_report.py` | the fix test and its report |
-| `geval_probe.py` | the probe with DeepEval's G-Eval as the judge |
-| `test_scorer.py` | every scorer branch on canned answers, no model |
-| `fixtures/` | the prompts. `agent-run-judge-01`: a made-up customer-support agent run, three cases and a control. `agent-run-judge-02`: a recorded Claude Code run in a staged repo, one case and a control. `-fix`: the fix test. `-intrace`, `-inrun`, `-inrun-split`: the outcome inside the log instead of in a note after it. `agent-run-judge-02-direction`, `agent-run-judge-02-cues-removed`: follow-up checks on 02. `moral-luck-06-sep`: the earlier vignette design the probe comes from |
-| `evidence/raw-logs/` | the full raw log of every run (every prompt, answer, request id and token count) and the public report pages built from them |
-| `traces/` | the recorded Claude Code runs behind fixture 02 (stream-json) |
-| `recording/storefront-draft/`, `scripts/ajr02-*` | the staged repo and the scripts that recorded the agent |
-| `scripts/` | fixture builders, log and trace reading views, the evidence wrapper, the cost counter |
+| `outcome_probe.py`, `scorer.py`, `providers.py`, `public_report.py` | probe, judge-free scoring, HTTP + logging, public page |
+| `run_luck_fix.py`, `fix_report.py`, `geval_probe.py` | fix test, its page, G-Eval |
+| `fixtures/` | `agent-run-judge-01` (written run), `-02` (recorded Claude Code run), `-fix`, 01 variants with the outcome inside the log, 02 follow-ups, `moral-luck-06-sep` (the vignette design it comes from) |
+| `evidence/raw-logs/` | every run's full log and the public pages |
+| `traces/`, `recording/`, `scripts/ajr02-*` | the recorded agent runs behind 02 and the kit that made them |
 
-The recordings use a made-up identity (Sara Brekke, `lorunasp`) in a staged repo. Paths under `/Users/sara/`
-in the logs are the machine the runs were made on.
+The recordings use a made-up identity (Sara Brekke, `lorunasp`) in a staged repo. The `/Users/sara/` paths in the
+logs are from the machine the runs were made on.
+
+Fixture 02 rebuilds from the shipped trace (`scripts/build_agent_run_judge_02.py`). Recording a new agent run is a
+different matter. The kit pushed to a private repo (`lorunasp/storefront`), so set `REPO` in
+`scripts/ajr02-setup-storefront.sh` to a repo you own. It also needs `gh`, Claude Code and macOS with Homebrew. A new
+recording is a new run, so `scripts/plant_ajr02.py` has to be adapted to it.

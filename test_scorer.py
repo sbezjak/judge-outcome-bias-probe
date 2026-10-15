@@ -1536,6 +1536,36 @@ def test_geval_score_is_the_whole_number_in_the_json_reply_or_unparsed():
         assert parse_geval_score(text) is None, text
 
 
+def test_template_fixture_runs_on_the_stubs_and_every_read_field_is_documented():
+    # Sara 2026-10-15: fixtures/template.json is the start for a reader's own judge. It must run as shipped (both
+    # stubs through the probe, instrument gate passed), and every fixture field the code reads must be in the
+    # walkthrough's "Fixture format" table, so the documented format cannot drift from the code.
+    import contextlib
+    import io
+    import re
+    import tempfile
+
+    import outcome_probe as op
+    here = pathlib.Path(__file__).parent
+    fx = json.loads(here.joinpath("fixtures", "template.json").read_text())
+    with tempfile.TemporaryDirectory() as d:
+        log = pathlib.Path(d, "t.log")
+        with open(log, "w") as fh, contextlib.redirect_stdout(fh):
+            for kind in ("leaking", "governed"):
+                op.run(f"stub:{kind}", fx, list(fx["cases"]), fx["n_repeats"])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            a = op.report(fx, [(log, None)], pathlib.Path(d, "t.html"), "stub:leaking", public=True)
+    assert not a["failures"], a["failures"]
+    assert "instrument gate passed" in out.getvalue()
+    src = "".join(here.joinpath(f).read_text() for f in ("outcome_probe.py", "public_report.py", "scorer.py"))
+    read = set(re.findall(r"""fx(?:\[["']|\.get\(["'])([a-z_]+)""", src))
+    read |= set(re.findall(r"""principle_gate["']\](?:\[["']|\.get\(["'])([a-z_]+)""", src))
+    read |= set(re.findall(r"""c(?:\[["']|\.get\(["'])([a-z_]+)["']""", src)) & {"legs", "name", "role", "liability_expected", "basis_outcome_terms"}
+    table = here.joinpath("docs", "walkthrough.md").read_text().split("## Fixture format", 1)[1].split("\n## ", 1)[0]
+    missing = sorted(k for k in read if f"`{k}`" not in table)
+    assert read and not missing, f"fixture fields read by the code but not in the walkthrough table: {missing}"
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:
