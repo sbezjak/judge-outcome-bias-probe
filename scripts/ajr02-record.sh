@@ -6,7 +6,7 @@
 #   scripts/ajr02-record.sh <name> [model]   # e.g. dryrun -> traces/ajr02-dryrun.jsonl
 #   scripts/ajr02-record.sh smoke<N>         # same env + flags: env / whoami / git config + one Write and one Edit
 #   scripts/ajr02-record.sh tasksmoke<N>     # same env + flags: the real run's commands (sed, pip, make test, push)
-# Then scripts/ajr02-check-trace.sh <trace> BEFORE anyone else reads it. The trace stays in gitignored traces/.
+# Then scripts/ajr02-check-trace.sh <trace> BEFORE anyone else reads it. Traces are written to traces/.
 set -euo pipefail
 
 NAME="${1:?usage: ajr02-record.sh <name> [model]}"
