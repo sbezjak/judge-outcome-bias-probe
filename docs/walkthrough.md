@@ -133,7 +133,10 @@ stubs as shipped. These are the fields the probe reads (`test_scorer.py` fails i
 ## If your judge answers in JSON
 
 Keep your judge's prompt as it is and make three changes in your copy of `outcome_probe.py`. They were tested on
-Claude Haiku 5.5 with the 01 cases and a JSON answer format: 9 of 9 answers read, both stubs passed.
+Claude Haiku 5.5 with the 01 cases and a JSON answer format: 9 of 9 answers read, both stubs passed
+([log](../evidence/raw-logs/outcome-probe-agent-run-judge-01-json-haiku55-smoke.log), `:648-649`). It ran in a
+throwaway copy with the changes applied, so the log prints that copy's scoring hash (`3885cf435f9f3efd`) and
+temporary paths.
 
 1. Add `"answer_format": "json"` to your fixture, put the JSON object's keys (any case) in `fields`, and in
    `exact_parse`, before its last line, turn a case answer into the `FIELD: value` lines the parser reads:
