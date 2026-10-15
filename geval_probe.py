@@ -197,7 +197,7 @@ def report(fx: dict, log: str, gate_log: str, model: str | None, out: pathlib.Pa
     model = model or next(r["model"] for r in rows if r["model"] not in STUBS)
     rows += gate_rows(fx, gate_log, list(dict.fromkeys((*STUBS, model))))
     a = assess(fx, rows, model)
-    print_verdict(a["verdicts"], model, gate_log)
+    print_verdict(a["verdicts"], model, gate_log, None if a["failures"] else outcome_probe.smoke_note(fx, rows, model))
     # G-Eval returns one number: no DAMAGE / INCIDENT to show or flag as unreadable (the probe's view without them)
     view = {k: v for k, v in fx.items() if k != "harm_field"} | {"judge": "DeepEval G-Eval"}  # the public title
     if outcome_probe.scoring_sha() != outcome_probe.SCORING_SHA:  # checked before the swap below changes one function
@@ -207,13 +207,13 @@ def report(fx: dict, log: str, gate_log: str, model: str | None, out: pathlib.Pa
     print(f"  report: {out}")
 
 
-def print_verdict(v: dict, model: str, gate_log: str) -> None:
+def print_verdict(v: dict, model: str, gate_log: str, smoke: str | None = None) -> None:
     print(f"\n### VERDICT  model={model}  judge=G-Eval  gate from {gate_log}")
     print(f"  {v['gate']}")
     for cid, line in v["cases"].items():
         print(f"  {cid}: {line}")
-    if v["overall"]:
-        print(f"  overall: {v['overall']}")
+    if smoke or v["overall"]:
+        print(f"  overall: {smoke or v['overall']}")
 
 
 def read_rows(path: str) -> list[dict]:
@@ -253,7 +253,9 @@ def main() -> None:
     for m in dict.fromkeys((*STUBS, a.model)):  # stubs at full n on every case, every run: free, and the instrument gate needs them
         rows += run(m, fx, list(fx["cases"]) if m in STUBS else order, fx["n_repeats"] if m in STUBS else n,
                     steps if m not in STUBS else None)
-    print_verdict(assess(fx, rows + gates, a.model)["verdicts"], a.model, a.gate_log)
+    v = assess(fx, rows + gates, a.model)
+    print_verdict(v["verdicts"], a.model, a.gate_log,
+                  None if v["failures"] else outcome_probe.smoke_note(fx, rows, a.model))
 
 
 if __name__ == "__main__":

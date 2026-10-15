@@ -663,6 +663,29 @@ def _stub_report(d, model="stub:leaking", cases=("D", "E"), n=2):
     return op, fx, log, a
 
 
+def test_fewer_runs_than_pre_registered_is_a_smoke_not_a_result():
+    # Sara 2026-10-15: a --n 1 smoke on Haiku 4.5 printed "LEAK DETECTED ... P 0.000" from one pair. Below the
+    # fixture's n_repeats the overall line and both pages say "smoke run, not a result"; at full n they do not.
+    import contextlib
+    import io
+    import tempfile
+    for n, smoke in ((2, True), (10, False)):
+        with tempfile.TemporaryDirectory() as d:
+            _stub_report(d, n=n)  # moral-luck-06-sep pre-registers n_repeats 10
+            import outcome_probe as op
+            fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("moral-luck-06-sep.json").read_text())
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                op.report(fx, [(pathlib.Path(d, "x.log"), None)], pathlib.Path(d, "x-public.html"), "stub:leaking",
+                          public=True)
+            overall = next(x for x in out.getvalue().splitlines() if x.startswith("  overall: "))
+            pages = [pathlib.Path(d, f).read_text() for f in ("x-report.html", "x-public.html")]
+            note = f"{n} runs per version, below the 10 the fixture pre-registers"
+            assert (overall == f"  overall: smoke run, not a result: {note}") is smoke, overall
+            assert all(("not a result: " + note) in p for p in pages) is smoke
+            assert ("LEAK DETECTED" in overall) is not smoke  # the leaking stub leaks: a full run says so
+
+
 def test_probe_report_carries_every_raw_answer_the_log_hash_and_count():
     import hashlib
     import html

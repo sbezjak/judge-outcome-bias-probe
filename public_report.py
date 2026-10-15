@@ -178,8 +178,11 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
     bp = fx["pairwise_bleed_p"]
 
     # --- top: what this is, the result
+    smoke = op.smoke_note(fx, rows, m)
     if a["failures"]:
         banner = f'<p class="overall leak"><span>No result: {e(v["gate"])}</span></p>'
+    elif smoke:
+        banner = f'<p class="overall"><span>{e(smoke[0].upper() + smoke[1:])}</span></p>'
     elif leaks:
         n_case = sum(fx["cases"][c]["role"] == "case" for c in cases)
         banner = f'<p class="overall leak"><span>Leak on {len(leaks)} of {n_case} cases</span></p>'
@@ -412,7 +415,7 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
               row("Every answer matches the raw log", f"{receipt} of {receipt}, byte for byte"),
               eval_prompts_match(),
               readable(),
-              *[row("Raw log unchanged since the run", f'<a href="{e(rel(p))}">{e(os.path.basename(p))}</a> '
+              *[row("Raw log fingerprint", f'<a href="{e(rel(p))}">{e(os.path.basename(p))}</a> '
                     + fp(hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest())) for p in logs],
               (row(f"Scoring code frozen {e(op.SCORING_FROZEN)}", f"<code>{op.SCORING_SHA[:16]}</code>, printed in "
                    f'the run\'s own log: <a href="{e(rel(logs[0]))}">{e(os.path.basename(logs[0]))}:{frozen_line}</a>')
@@ -421,7 +424,8 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
                    f"<code>{op.SCORING_SHA[:16]}</code>; the G-Eval log does not print it, the code committed with "
                    "these runs still has it")),
               '</table><p class="note">Fingerprint (SHA-256), taken when this page was built: change one character of '
-              "a file and it changes; the raw log's git history shows it unchanged since the run. Request id: the id "
+              "a file and it changes. For a log committed to git, its history shows whether it changed after the run. "
+              "Request id: the id "
               "the model provider's API returned for each call, kept in the raw log; it ties each answer to one real "
               "request.</p>",
               f'<h2 id="limits">Limits</h2><ul><li><b>Small sample:</b> {n_runs} runs per version, one wording per '

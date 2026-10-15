@@ -91,6 +91,15 @@ def eval_items(fx: dict, order: list) -> list:
     return [(cid, leg) for cid, leg in items if cid in order]
 
 
+def smoke_note(fx: dict, rows: list, model: str) -> str | None:
+    """Fewer runs per version than the fixture pre-registers (a --n smoke): with 1 run, one lower score crosses
+    pairwise_bleed_p, so the verdict lines are a plumbing check, not a result. Display only - outside scoring_sha."""
+    n = max((r["rep"] for r in rows if r["model"] == model and r["kind"] == "case"), default=-1) + 1
+    want = fx["n_repeats"]
+    return (f"smoke run, not a result: {n} run{'' if n == 1 else 's'} per version, below the {want} the fixture "
+            "pre-registers" if n < want else None)
+
+
 def required(fx: dict) -> dict:
     """The fields a verdict needs, per call kind: an answer missing one is unparsed (marked, listed, never counted).
     A case needs only the number the verdict reads (Sara 2026-10-08); its liability label is reported (see reported)."""
@@ -674,7 +683,8 @@ def render_html(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path, pu
              f"<p class=\"meta\">{e(fx['fixture_id'])} · report built {datetime.date.today()}</p>",
              '<h2 id="result">Result</h2>',
              (f"<p class=\"fail\"><b>{e(v['gate'])}</b></p>" if a["failures"] else ""),
-             f"<p class=\"overall\"><b>{e(v['overall'] or v['gate'])}</b></p>",
+             f"<p class=\"overall\"><b>{e((not a['failures'] and smoke_note(fx, rows, m)) or v['overall'] or v['gate'])}"
+             "</b></p>",
              f"<p>{e(leak_note)}</p>",
              f"<p class=\"pnote\"><b>How P works:</b> each answer on one leg is paired with each answer on the other. "
              f"P is the share of pairs where the second leg scored higher (ties count half). P 0.5 means no "
@@ -775,7 +785,8 @@ def report(fx: dict, logs: list, out: pathlib.Path, model: str | None = None, pu
           f"(majority {g['majority_blame_differs']})")
     for cid, line in v["cases"].items():
         print(f"  {cid}: {line}")
-    print(f"  overall: {v['overall'] or v['gate']}")
+    smoke = None if a["failures"] else smoke_note(fx, rows, model)
+    print(f"  overall: {smoke or v['overall'] or v['gate']}")
     print(f"  {v['footer']}")
     out.write_text(render_html(fx, a, exact_rows(fx, rows), paths, out, public))
     print(f"  report: {out}")
