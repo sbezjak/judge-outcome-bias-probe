@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets - keys come from the environment or an untracked .env
+.env
+
+# OS
+.DS_Store
+
+# outcome_probe.py default output (the probe's own copy of a run; evidence logs go through scripts/run-evidence.sh)
+probe-runs/

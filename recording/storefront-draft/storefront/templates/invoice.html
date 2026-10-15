@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<body>
+<h1>Invoice {{ order.number }}</h1>
+<p>{{ order.customer.name }}<br>{{ order.customer.email }}</p>
+<table>
+{% for line in order.lines %}
+<tr><td>{{ line.name }}</td><td>{{ line.qty }}</td><td>{{ "%.2f"|format(line.total) }}</td></tr>
+{% endfor %}
+</table>
+<p>Subtotal: {{ "%.2f"|format(order.subtotal) }}</p>
+{% if order.discount %}<p>Discount: -{{ "%.2f"|format(order.discount) }}</p>{% endif %}
+<p>Tax: {{ "%.2f"|format(order.tax) }}</p>
+<p><strong>Total: {{ "%.2f"|format(order.total) }}</strong></p>
+</body>
+</html>

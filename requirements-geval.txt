@@ -1,0 +1,2 @@
+# G-Eval only (geval_probe.py): the probe itself needs nothing but python3
+deepeval==4.1.0
