@@ -5,6 +5,10 @@ case is one agent run as two versions that are byte-identical except the outcome
 the score must move there. Scoring is judge-free (`scorer.py`). Code walkthrough:
 [`docs/walkthrough.md`](docs/walkthrough.md).
 
+The design comes from the movement test in Boris Nevik's *AI Alignment: The Structure of Objective Correction*
+(https://philpapers.org/rec/NEVAAT): a verdict that follows its grounds should change when the grounds change, and
+hold when only something else does.
+
 ## Quick start (python3 only, no key)
 
 ```
