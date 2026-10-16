@@ -9,7 +9,7 @@ the score must move there. Scoring is judge-free (`scorer.py`). Code walkthrough
 
 ```
 git clone https://github.com/sbezjak/judge-outcome-bias-probe.git && cd judge-outcome-bias-probe
-python3 test_scorer.py                    # 91 checks, no model
+python3 test_scorer.py                    # 94 checks, no model
 python3 outcome_probe.py stub:governed    # full run on scripted judges -> probe-runs/
 python3 outcome_probe.py --report evidence/raw-logs/outcome-probe-agent-run-judge-01-opus55.log
 git diff --word-diff && git checkout -- evidence    # rebuilt page: at most the build date differs
@@ -22,7 +22,7 @@ is on every 01 page (case C):
 
 | | Haiku 4.5 | Haiku 5.5 | Sonnet 5.5 | Opus 5.5 |
 |---|---|---|---|---|
-| 01 written runs | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku45-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-opus55-report-public.html) |
+| 01 made-up runs | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku45-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-haiku55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-01-opus55-report-public.html) |
 | 02 recorded run | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-haiku45-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-haiku55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/outcome-probe-agent-run-judge-02-opus55-report-public.html) |
 | 01 under G-Eval | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-haiku45-report-public.html) | - | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-opus55-retry-report-public.html) |
 | 02 fix test | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/agent-run-judge-02-fix-haiku45-report-public.html) | - | - | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/agent-run-judge-02-fix-opus55-report-public.html) |
@@ -71,14 +71,14 @@ A full run has 6 + cases x 2 x n + 5 x cases calls with `--eval`, where cases co
 | 02, prompt caching (as run) | $0.12 | $0.03 | $0.51 | $1.09 |
 
 `--batch` halves the list price; 01 Sonnet and Opus ran that way ($0.21, $0.61). Batch and caching together were never
-run. Everything in `evidence/` cost $12.33 (2,001 calls, 38 paid logs, 16 of them smokes), plus $0.14 for the agent
+run. Everything in `evidence/` cost $12.34 (2,011 calls, 39 paid logs, 17 of them smokes), plus $0.14 for the agent
 recordings; recount with `python3 scripts/sum_spend.py`.
 
 ## Fix test
 
 Scores PROCESS with the outcome hidden, then reveals it in the same conversation. It held on 01 (Haiku 4.5,
-Sonnet 5.5, Opus 5.5). On 02 it failed with Haiku 4.5: 9 of 10 harm-leg scores dropped after the reveal, P 0.0
-(`agent-run-judge-02-fix-haiku45.log:3551-3552`). With Opus 5.5 it held: 0 of 20 scores changed, and every BASIS
+Sonnet 5.5, Opus 5.5). On 02 it failed with Haiku 4.5: 12 of 20 scores changed after the reveal, 9 of 10 harm-leg scores down and
+3 of 10 no-harm scores up (`agent-run-judge-02-fix-haiku45.log:3551-3552`). With Opus 5.5 it held: 0 of 20 scores changed, and every BASIS
 named the skipped test (`agent-run-judge-02-fix-opus55.log:3619`). It is not a general fix: it depends on the judge.
 
 ```
@@ -103,7 +103,7 @@ env -u CONFIDENT_API_KEY DEEPEVAL_TELEMETRY_OPT_OUT=1 .venv/bin/python geval_pro
 |---|---|
 | `outcome_probe.py`, `scorer.py`, `providers.py`, `public_report.py` | probe, judge-free scoring, HTTP + logging, public page |
 | `run_luck_fix.py`, `fix_report.py`, `geval_probe.py` | fix test, its page, G-Eval |
-| `fixtures/` | `agent-run-judge-01` (written run), `-02` (recorded Claude Code run), `-fix`, 01 variants with the outcome inside the log, 02 follow-ups, `moral-luck-06-sep` (the vignette design it comes from) |
+| `fixtures/` | `agent-run-judge-01` (made-up runs), `-02` (recorded Claude Code run), `-fix`, 01 variants with the outcome inside the log, 02 follow-ups, `moral-luck-06-sep` (the vignette design it comes from) |
 | `evidence/raw-logs/` | every run's full log and the public pages |
 | `traces/`, `recording/`, `scripts/ajr02-*` | the recorded agent runs behind 02 and the kit that made them |
 

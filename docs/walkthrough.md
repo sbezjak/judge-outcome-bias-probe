@@ -28,7 +28,7 @@ outcome_probe.py   the probe: run, assess, report, trust guards, fingerprint
   |        public_report.py   public page layout
   geval_probe.py              G-Eval as judge
 run_luck_fix.py <- fix_report.py   fix arm (on providers, scorer) and its page (also on outcome_probe)
-test_scorer.py     91 checks, no model
+test_scorer.py     94 checks, no model
 ```
 
 ## One run: 01 on Opus 5.5
@@ -36,13 +36,13 @@ test_scorer.py     91 checks, no model
 `evidence/raw-logs/outcome-probe-agent-run-judge-01-opus55.log`
 
 1. **Wrapper.** `run-evidence.sh` logs the command and the ETA and cost estimates, then tees everything (`log:1-2`).
-2. **Checks.** [`main`](../outcome_probe.py#L809) refuses a fixture with no `pairwise_bleed_p`
-   ([L815](../outcome_probe.py#L815)) and a run with no control ([L832](../outcome_probe.py#L832)).
-3. **Stubs first.** [`run`](../outcome_probe.py#L162) runs both stubs, then the model, through the same loop
-   ([L839-842](../outcome_probe.py#L839)). [`stub_reply`](../outcome_probe.py#L134) finds its leg by the prompt
+2. **Checks.** [`main`](../outcome_probe.py#L820) refuses a fixture with no `pairwise_bleed_p`
+   ([L826](../outcome_probe.py#L826)) and a run with no control ([L843](../outcome_probe.py#L843)).
+3. **Stubs first.** [`run`](../outcome_probe.py#L163) runs both stubs, then the model, through the same loop
+   ([L850-853](../outcome_probe.py#L850)). [`stub_reply`](../outcome_probe.py#L135) finds its leg by the prompt
    text. Every section prints the scoring fingerprint: `log:6  ### SCORING frozen 2026-10-08  sha 9b167d934efda4f0`.
 4. **Calls.** One live plumbing call (`log:1728`), then 5 gate + 4 x 2 x 10 + 20 eval = 105 jobs
-   ([L181-184](../outcome_probe.py#L181)) in one Message Batch ([`batch_call`](../providers.py#L161)):
+   ([L186-189](../outcome_probe.py#L186)) in one Message Batch ([`batch_call`](../providers.py#L161)):
    `log:1737  ### BATCH SUBMITTED  batch_id=msgbatch_01XH4qE2WmTMoXHw9tWCsXQc ... n=105`. Live and batch calls
    share one request body ([`_anthropic_body`](../providers.py#L88)).
 5. **Log.** [`log_call`](../providers.py#L216) prints the request id, usage, prompt, reply and parse. Case C, rep 0:
@@ -52,18 +52,18 @@ test_scorer.py     91 checks, no model
    log:4450  PROCESS: 1                                                    (harm)
    log:4453  BASIS: Skipped the required test send after reading the policy
    ```
-6. **Parse.** [`exact_parse`](../outcome_probe.py#L117) -> [`parse_fields`](../scorer.py#L117), strict: whole
+6. **Parse.** [`exact_parse`](../outcome_probe.py#L118) -> [`parse_fields`](../scorer.py#L117), strict: whole
    numbers 0-10 only ([`_score10`](../scorer.py#L79)), so "6-7" or "6.5" is unparsed. A field name up to 2 letters
    off is read and listed; values are never repaired. Anything unparsed is marked `!!! NOT PARSED`
-   ([L216](../outcome_probe.py#L216)).
-7. **Read back.** [`report`](../outcome_probe.py#L753) -> [`read_probe_log`](../scorer.py#L503) gives one row per
-   call. Trust guards: [`check_fidelity`](../outcome_probe.py#L341) (rows == calls) and
-   [`receipt_check`](../outcome_probe.py#L366) (each shown answer is byte-identical to the log).
+   ([L227](../outcome_probe.py#L227)).
+7. **Read back.** [`report`](../outcome_probe.py#L764) -> [`read_probe_log`](../scorer.py#L503) gives one row per
+   call. Trust guards: [`check_fidelity`](../outcome_probe.py#L352) (rows == calls) and
+   [`receipt_check`](../outcome_probe.py#L377) (each shown answer is byte-identical to the log).
 8. **Score.** [`score_luck`](../scorer.py#L208) computes P over 10 x 10 pairs ([`pairwise_p`](../scorer.py#L165)).
    Leak rule at [L312](../scorer.py#L312) with [`_two_sided`](../scorer.py#L200), which uses an epsilon because
    1 - 0.8 = 0.19999999999999996. Control rule at [L310](../scorer.py#L310).
    [`instrument_gate`](../scorer.py#L607): the leaking stub must be flagged everywhere, the governed one nowhere,
-   and the control must move, or no verdict is given. [`smoke_note`](../outcome_probe.py#L94) replaces the verdict
+   and the control must move, or no verdict is given. [`smoke_note`](../outcome_probe.py#L95) replaces the verdict
    when n is below the fixture's.
 9. **Result.**
    ```
@@ -86,7 +86,7 @@ test_scorer.py     91 checks, no model
   the fixtures' tolerance (`blame_tol` 1) would miss it. n = 10 is a floor, not a power calculation.
 - **Frozen scoring.** [`scoring_sha`](../outcome_probe.py#L61) hashes the scoring functions and two fixtures;
   `test_scoring_is_frozen` fails on any change.
-- **Loud failures.** An empty reply is retried once ([L210](../outcome_probe.py#L210)), and so is a dropped
+- **Loud failures.** An empty reply is retried once ([L221](../outcome_probe.py#L221)), and so is a dropped
   connection ([`_post_live`](../providers.py#L138)). A batch submit is never retried.
 - **A hold is not a pass.** The judge may know it is being tested; `--eval` asks it.
 
@@ -182,3 +182,5 @@ repo, not from your copy.
 - A hold may be test performance (Opus 5.5: 20 of 20 EVALUATION).
 - The findings are on Claude judges only; the qwen runs only shake out the instrument.
 - One rubric per case; a production judge's prompt will differ, so point the probe at that prompt.
+- Answer formats tested: `FIELD: value` lines, and JSON with the three changes above. Any other format needs its
+  own reader.
