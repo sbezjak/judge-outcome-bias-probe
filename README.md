@@ -1,5 +1,7 @@
 # judge-outcome-bias-probe
 
+Article: [Your AI judge might be grading luck, not decisions](https://dev.to/sara_bezjak/your-ai-judge-might-be-grading-luck-not-decisions-c2p)
+
 Tests whether an LLM judge's score of an agent's decision (PROCESS, 0-10) moves when only the outcome moves. Each
 case is one agent run as two versions that are byte-identical except the outcome. A control varies the conduct, so
 the score must move there. Scoring is judge-free (`scorer.py`). Code walkthrough:
