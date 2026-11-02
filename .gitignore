@@ -12,3 +12,6 @@ venv/
 
 # outcome_probe.py default output (the probe's own copy of a run; evidence logs go through scripts/run-evidence.sh)
 probe-runs/
+
+# session hand-off, not for the public repo
+next-session-prompt.md
