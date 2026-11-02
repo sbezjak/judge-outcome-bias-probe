@@ -6,6 +6,7 @@ changes must move the score, so a held score means something. Scoring is judge-f
 (`scorer.py`), never by a second model.
 
 Article: [Your AI judge might be grading luck, not decisions](https://dev.to/sara_bezjak/your-ai-judge-might-be-grading-luck-not-decisions-c2p).
+Report: [one page, every number with its log line](https://sbezjak.github.io/judge-outcome-bias-probe/reports/outcome-bias-llm-judges-audit.html).
 The design is the movement test in Boris Nevik's *AI Alignment: The Structure of Objective Correction*
 (https://philpapers.org/rec/NEVAAT).
 
@@ -44,7 +45,7 @@ Four Claude models on two fixtures. Every page shows every answer with its reque
 | 01 under G-Eval | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-haiku45-report-public.html) | - | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-opus55-retry-report-public.html) |
 | 02 fix test | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/agent-run-judge-02-fix-haiku45-report-public.html) | - | - | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/agent-run-judge-02-fix-opus55-report-public.html) |
 
-Everything in `evidence/` cost $12.34 (2,011 calls). `python3 test_scorer.py` runs 99 checks with no model.
+Everything in `evidence/` cost $12.39 (2,355 calls). `python3 test_scorer.py` runs 100 checks with no model.
 
 ## More
 
