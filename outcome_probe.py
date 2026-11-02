@@ -16,7 +16,11 @@ A leak is the strong result. No leak is consistent with governance, not proof (a
 
 Usage:
   python3 outcome_probe.py <model> [--fixture F] [--cases E,F,D] [--n 10] [--eval] [--batch] [--log PATH] [--reading]
+  python3 outcome_probe.py <model> --prompt my_judge.txt [--system my_system.txt] [--score PROCESS] [--json]
   python3 outcome_probe.py --report <log>[@A,B] [<log>[@A,B] ...] [--fixture F] [--html PATH] [--reading]
+--prompt = your judge's prompt as you use it, on the shipped cases: {log} marks where the transcript goes (first, if
+absent); --score names the 0-10 field the verdict reads; --json when your judge answers with a JSON object. A log made
+with --prompt is rebuilt by --report with the same --prompt.
 Models: claude-* (Anthropic), ollama:<name>, openai:<name>, deepseek:<name>, stub:leaking, stub:governed.
 --batch = Anthropic Message Batches (half price). --report rebuilds the report from existing logs, no model calls
 (@A,B takes only those cases from that log, for a result split across logs). The page written is the public
@@ -54,8 +58,14 @@ PLUMBING = "Reply with the single word OK."
 # fingerprint covers every function that turns a raw answer into a verdict, the parse constants, and the two frozen
 # fixtures. test_scoring_is_frozen fails on ANY change to them; a change needs a new dated line here, agreed with Sara
 # first, and every report rebuilt and the change said in the write-up.
-SCORING_FROZEN = "2026-10-08"
-SCORING_SHA = "9b167d934efda4f0b42d1156bba4ec37b7090fce43ea1d07fb4cd8c85aefa948"
+# 2026-11-02 (Sara: "go with the freeze bump"): a judge with no yes/no label (liability_field null) and JSON answers
+# (answer_format json). An answer in FIELD: value form is read exactly as before: every page in evidence/ was rebuilt
+# under this freeze and differs only in its freeze row. A page names the freeze its log ran under.
+SCORING_FREEZES = {
+    "2026-10-08": "9b167d934efda4f0b42d1156bba4ec37b7090fce43ea1d07fb4cd8c85aefa948",
+    "2026-11-02": "0363c1bc18faba8bea4f0eaa348bcdbdbde008ec5c4f614d451a0b0a4e39a56d",
+}
+SCORING_FROZEN, SCORING_SHA = list(SCORING_FREEZES.items())[-1]
 
 
 def scoring_sha() -> str:
@@ -65,8 +75,8 @@ def scoring_sha() -> str:
     funcs = [scorer.parse_fields, scorer._score10, scorer._field_name, scorer._edits, scorer.parse_verdict,
              scorer.pairwise_p, scorer._two_sided, scorer._majority, scorer.score_luck, scorer.read_probe_log,
              scorer._probe_label, scorer._parsed, scorer.unparsed_lines, scorer.robustness_line,
-             scorer.instrument_gate, scorer.probe_verdicts, required, reported, exact_parse, exact_rows, stub_reply,
-             assess]
+             scorer.instrument_gate, scorer.probe_verdicts, required, reported, exact_parse, json_lines, exact_rows,
+             stub_reply, assess]
     parts = [inspect.getsource(f) for f in funcs] + [f"NAME_REPAIR={NAME_REPAIR} EVAL_REPS={EVAL_REPS}"]
     parts += [(HERE / "fixtures" / f).read_text() for f in ("moral-luck-06-sep.json", "agent-run-judge-01.json")]
     return hashlib.sha256("\n".join(parts).encode()).hexdigest()
@@ -76,8 +86,34 @@ def prompt(fx: dict, cid: str, leg: str) -> str:
     """The case leg, the rubric question and the output contract, joined by blank lines: the exact text the judge reads.
     Only {name} is filled; any other brace (a JSON answer format) goes in as written - str.format would crash on it."""
     c = fx["cases"][cid]
+    if fx.get("prompt_template"):  # --prompt: the reader's judge prompt as one text, the leg at {log} or first
+        t = fx["prompt_template"].replace("{name}", c["name"])
+        return t.replace("{log}", c["legs"][leg]) if "{log}" in t else c["legs"][leg] + "\n\n" + t
     return "\n\n".join([c["legs"][leg], fx["question"].replace("{name}", c["name"]),
                         fx["output_contract"].replace("{name}", c["name"])])
+
+
+def own_judge(fx: dict, prompt_path: pathlib.Path, system_path: pathlib.Path | None, score: str, as_json: bool) -> dict:
+    """The fixture for --prompt (2026-11-02): the shipped cases, rule check and thresholds, your judge's prompt instead
+    of the fixture's rubric. The verdict reads one field (--score); no label field is expected beside it; a JSON
+    answer is read when --json. The fixture id carries the prompt's fingerprint, so --report needs the same files."""
+    text = prompt_path.read_text()
+    system = system_path.read_text() if system_path else None
+    if not text.strip():
+        sys.exit(f"{prompt_path} is empty")
+    if any(c["legs"][leg] in text for c in fx["cases"].values() for leg in c["legs"]):
+        sys.exit(f"{prompt_path} already contains a shipped case: put {{log}} where the transcript goes")
+    tag = hashlib.sha256((text + "\n" + (system or "")).encode()).hexdigest()[:8]
+    own = {k: v for k, v in fx.items() if k not in ("question", "output_contract", "system", "harm_field", "status",
+                                                    "register", "ground", "design_note")}
+    own |= {"fixture_id": f"{fx['fixture_id']}-prompt-{tag}", "instrument": f"your judge's prompt on the "
+            f"{fx['fixture_id']} cases ({prompt_path.name} {tag})", "prompt_template": text, "blame_field": score,
+            "liability_field": None, "fields": {score: "score"}}
+    if system:
+        own["system"] = system
+    if as_json:
+        own["answer_format"] = "json"
+    return own
 
 
 def eval_check(fx: dict) -> dict:
@@ -108,8 +144,10 @@ def required(fx: dict) -> dict:
 
 
 def reported(fx: dict) -> dict:
-    """Fields parsed and shown but not required: an unreadable one is marked and listed, never fatal to its case."""
-    return {"case": [fx.get("liability_field", "LIABILITY")]}
+    """Fields parsed and shown but not required: an unreadable one is marked and listed, never fatal to its case.
+    A fixture with liability_field null (a judge whose answer has no yes/no label) reports nothing (2026-11-02)."""
+    lf = fx.get("liability_field", "LIABILITY")
+    return {"case": [lf]} if lf else {}
 
 
 NAME_REPAIR = 2  # letters a field NAME may be off and still be read (unique nearest only); a value is never repaired
@@ -122,7 +160,23 @@ def exact_parse(fx: dict, kind: str, answer: str | None) -> dict:
     if kind == "eval":
         return {"READS-AS": parse_verdict(answer or "", EVAL_LABELS)}
     fields = fx["principle_gate"]["fields"] if kind == "gate" else fx["fields"]
+    if kind == "case" and fx.get("answer_format") == "json":
+        answer = json_lines(answer or "")
     return parse_fields(answer or "", fields, name_tol=NAME_REPAIR, strict=True)
+
+
+def json_lines(text: str) -> str:
+    """A JSON answer (2026-11-02) as the FIELD: value lines the parser reads: the first { to the last }, one line per
+    key. No JSON object, or not an object: empty, so the answer is unparsed and listed. The same strict rules then
+    apply: 7.0 or "6-7" stays unparsed; true / false is a label when fields lists it."""
+    start, end = text.find("{"), text.rfind("}")
+    try:
+        data = json.loads(text[start:end + 1]) if 0 <= start < end else None
+    except ValueError:
+        data = None
+    if not isinstance(data, dict):
+        return ""
+    return "\n".join(f"{k}: {' '.join(str(v).split())}" for k, v in data.items())
 
 
 def exact_rows(fx: dict, rows: list) -> list:
@@ -149,13 +203,16 @@ def stub_reply(kind: str, fx: dict, text: str) -> dict:
         c = fx["cases"][cid]
         first = leg == list(c["legs"])[0]
         if c["role"] == "control":
-            score, label = (2 if first else 8), fx["fields"][lf][0]
+            score, label = (2 if first else 8), fx["fields"][lf][0] if lf else None
         else:
             score, label = (5 if first or kind == "governed" else 8), c["liability_expected"][leg]
         lines = [f"{fx['blame_field']}: {score}"]
         if fx.get("harm_field"):
             lines.append(f"{fx['harm_field']}: {0 if first and c['role'] == 'case' else 7}")
-        answer = "\n".join(lines + [f"{lf}: {label}", "BASIS: scripted stub"])
+        lines += ([f"{lf}: {label}"] if lf else []) + ["BASIS: scripted stub"]  # no label line when lf is null
+        answer = "\n".join(lines)
+        if fx.get("answer_format") == "json":  # the stubs answer in the judge's format, so the gate still tests the parser
+            answer = json.dumps({k: int(v) if v.isdigit() else v for k, v in (x.split(": ", 1) for x in lines)})
     return {"answer": answer, "thinking": "", "usage": {}, "id": None, "request_id": f"stub:{kind}",
             "stop_reason": "end_turn"}
 
@@ -768,7 +825,7 @@ def report(fx: dict, logs: list, out: pathlib.Path, model: str | None = None, pu
     for path, only in logs:
         text = pathlib.Path(path).read_text()
         if f"### FIXTURE {fx['fixture_id']} " not in text:
-            sys.exit(f"{path} is not a {fx['fixture_id']} log - pass --fixture")
+            sys.exit(f"{path} is not a {fx['fixture_id']} log - pass --fixture, or the same --prompt the run used")
         full = read_probe_log(text, str(path))
         check_fidelity([path], full)
         rows += read_probe_log(text, str(path), only)
@@ -821,13 +878,16 @@ def main() -> None:
     args = sys.argv[1:]
     opt = lambda name, default=None: args[args.index(name) + 1] if name in args else default
     fx = json.loads(pathlib.Path(opt("--fixture", DEFAULT_FIXTURE)).read_text())
+    if "--prompt" in args:
+        fx = own_judge(fx, pathlib.Path(opt("--prompt")), pathlib.Path(opt("--system")) if opt("--system") else None,
+                       opt("--score", "PROCESS"), "--json" in args)
     public = "--reading" not in args  # the public report by default; --reading writes the full reading page
     page = "-report-public.html" if public else "-report.html"
     if "pairwise_bleed_p" not in fx:
         sys.exit("the probe needs a fixture with a pre-registered pairwise_bleed_p")
     if "--report" in args:
         logs = [a.partition("@") for a in args[args.index("--report") + 1:] if not a.startswith("--")
-                and a not in (opt("--fixture"), opt("--html"))]
+                and a not in (opt("--fixture"), opt("--html"), opt("--prompt"), opt("--system"), opt("--score"))]
         logs = [(p, set(only.split(",")) if only else None) for p, _, only in logs]
         if not logs:
             sys.exit(__doc__)

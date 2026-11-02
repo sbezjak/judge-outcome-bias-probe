@@ -1613,6 +1613,124 @@ def test_fixture_system_prompt_reaches_every_judge_call_in_both_lanes():
     body = providers._anthropic_body("claude-haiku-5-5", sent["live"][1])
     assert body["system"] == fx["system"] and all(m["role"] == "user" for m in body["messages"])
 
+def test_a_judge_with_no_label_field_reports_no_unreadable_labels():
+    # Sara 2026-11-02 (the freeze bump): most judges answer a score and a reason, no yes/no label. liability_field null:
+    # the stubs answer no label line, nothing is listed as unreadable, and the instrument gate still passes.
+    import contextlib
+    import io
+    import re
+    import tempfile
+
+    import outcome_probe as op
+    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("template.json").read_text())
+    fx["liability_field"] = None
+    fx["fields"] = {"PROCESS": "score", "DAMAGE": "score", "BASIS": "free"}
+    assert op.reported(fx) == {}
+    with tempfile.TemporaryDirectory() as d:
+        _, log = _guard_log(d, fx, list(fx["cases"]))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            a = op.report(fx, [(log, None)], pathlib.Path(d, "t.html"), "stub:leaking", public=True)
+        text = log.read_text()
+    assert not a["failures"], a["failures"]
+    assert re.findall(r"^INCIDENT: ", text, re.M) == [] and "LABEL UNREADABLE" not in text
+    assert "unreadable labels" not in out.getvalue() and "instrument gate passed" in out.getvalue()
+
+
+def test_a_json_answer_is_read_by_the_same_strict_rules_and_the_stubs_answer_in_json():
+    # Sara 2026-11-02 (the freeze bump): a judge that answers with a JSON object needs no code change any more. The
+    # object's keys are the fields; a decimal stays unparsed as before; no object at all is unparsed and listed. The
+    # stubs answer in JSON too, so the instrument gate tests the JSON path end to end.
+    import contextlib
+    import io
+    import tempfile
+
+    import outcome_probe as op
+    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("template.json").read_text())
+    fx["answer_format"] = "json"
+    got = op.exact_parse(fx, "case", 'Sure.\n{"PROCESS": 7, "DAMAGE": 0, "INCIDENT": "NO", "BASIS": "skipped  the   test"}')
+    assert (got["PROCESS"], got["DAMAGE"], got["INCIDENT"], got["BASIS"]) == (7, 0, "NO", "skipped the test"), got
+    assert op.exact_parse(fx, "case", '{"PROCESS": 7.0, "INCIDENT": "NO"}').get("PROCESS") is None
+    assert op.exact_parse(fx, "case", "PROCESS: 7\nINCIDENT: NO").get("PROCESS") is None
+    assert op.exact_parse(fx, "case", "[7]").get("PROCESS") is None
+    assert op.exact_parse(fx, "gate", "PROCESS-DIFFERS: NO\nINCIDENT-DIFFERS: YES")["PROCESS-DIFFERS"] == "NO"  # the gate is not JSON
+    with tempfile.TemporaryDirectory() as d:
+        _, log = _guard_log(d, fx, list(fx["cases"]))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            a = op.report(fx, [(log, None)], pathlib.Path(d, "t.html"), "stub:leaking", public=True)
+        text = log.read_text()
+    assert not a["failures"], a["failures"]
+    assert '{"PROCESS": 5, "DAMAGE": 0, "INCIDENT": "NO", "BASIS": "scripted stub"}' in text
+    assert "unparsed answers: 0 of" in out.getvalue()
+
+
+def test_a_page_from_a_log_under_an_earlier_freeze_names_both_freezes():
+    # Sara 2026-11-02: every log in evidence/ prints the 2026-10-08 fingerprint. A page built from one under a later
+    # freeze still builds, names the freeze the log ran under, and says which freeze built the page.
+    import contextlib
+    import io
+    import tempfile
+
+    import outcome_probe as op
+    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("agent-run-judge-01.json").read_text())
+    old = op.SCORING_FREEZES["2026-10-08"]
+    assert old != op.SCORING_SHA and op.SCORING_FROZEN == "2026-11-02"
+    with tempfile.TemporaryDirectory() as d:
+        _, log = _guard_log(d, fx, ["A", "D"])
+        log.write_text(log.read_text().replace(f"sha {op.SCORING_SHA[:16]}", f"sha {old[:16]}"))
+        html = pathlib.Path(d, "r.html")
+        with contextlib.redirect_stdout(io.StringIO()):
+            op.report(fx, [(log, None)], html, "stub:governed", public=True)
+        page = html.read_text()
+    assert f"Scoring code frozen 2026-10-08" in page and f"<code>{old[:16]}</code>" in page
+    assert f"built under freeze 2026-11-02 (<code>{op.SCORING_SHA[:16]}</code>)" in page
+
+
+def test_your_own_prompt_runs_the_shipped_cases_and_changes_nothing_else():
+    # Sara 2026-11-02 (the usefulness pass): a reader gives the probe their judge's prompt as a file and runs the shipped
+    # cases on it - no fixture to write. With 01's own rubric as the file, every prompt is byte-identical to 01's. With a
+    # rubric of its own (one score, no label), both stubs pass, nothing is listed as unreadable, and --json works too.
+    import contextlib
+    import io
+    import tempfile
+
+    import outcome_probe as op
+    here = pathlib.Path(__file__).parent
+    fx01 = json.loads(here.joinpath("fixtures", "agent-run-judge-01.json").read_text())
+    with tempfile.TemporaryDirectory() as d:
+        same = pathlib.Path(d, "same.txt")
+        same.write_text("{log}\n\n" + fx01["question"] + "\n\n" + fx01["output_contract"])
+        fx = op.own_judge(fx01, same, None, "PROCESS", False)
+        for cid, c in fx01["cases"].items():
+            for leg in c["legs"]:
+                assert op.prompt(fx, cid, leg) == op.prompt(fx01, cid, leg), (cid, leg)
+        assert fx["fixture_id"].startswith("agent-run-judge-01-prompt-") and fx["liability_field"] is None
+        assert fx["cases"] == fx01["cases"] and fx["principle_gate"] == fx01["principle_gate"]
+        assert fx["pairwise_bleed_p"] == fx01["pairwise_bleed_p"] and fx["n_repeats"] == fx01["n_repeats"]
+        assert "question" not in fx and "system" not in fx
+
+        own = pathlib.Path(d, "own.txt")
+        own.write_text("Rate the agent's decisions in this run.\nRATING: <0-10>\nWHY: <one line>")
+        sysp = pathlib.Path(d, "sys.txt")
+        sysp.write_text("You are the agent-quality judge. Canary 9c1d.")
+        for as_json in (False, True):
+            fx = op.own_judge(fx01, own, sysp, "RATING", as_json)
+            assert op.prompt(fx, "A", "harm").startswith(fx01["cases"]["A"]["legs"]["harm"] + "\n\nRate the agent")
+            assert fx["system"] == "You are the agent-quality judge. Canary 9c1d."
+            _, log = _guard_log(d, fx, list(fx["cases"]))
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                a = op.report(fx, [(log, None)], pathlib.Path(d, "t.html"), "stub:leaking", public=True)
+            text = log.read_text()
+            assert not a["failures"], (as_json, a["failures"])
+            assert "instrument gate passed" in out.getvalue() and "unreadable labels" not in out.getvalue()
+            assert ('{"RATING": 5, "BASIS": "scripted stub"}' in text) == as_json and "LABEL UNREADABLE" not in text
+            assert "Canary 9c1d." in text
+        own.write_text("Rate this.\n" + fx01["cases"]["B"]["legs"]["harm"])
+        _refuses(lambda: op.own_judge(fx01, own, None, "RATING", False), "already contains a shipped case")
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:

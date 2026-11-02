@@ -55,15 +55,20 @@ python3 outcome_probe.py ollama:qwen2.5:7b                         # local, afte
 
 `openai:` / `deepseek:` adapters exist; no run in `evidence/` used them.
 
-**Your own judge.** Start from `fixtures/template.json`, which runs as shipped on the stubs. Put your log in twice,
-identical except the outcome, plus a control, your judge's rubric in `question` and `output_contract`, and its
-system prompt, if it has one, in `system` - it is sent unchanged. Then
-run `python3 outcome_probe.py <model> --fixture fixtures/<yours>.json`. Every field is explained in the
-walkthrough's [fixture format](docs/walkthrough.md#fixture-format) table. The probe reads answers that start with
-`FIELD: value` lines. If your judge answers in JSON, keep its prompt as it is: the walkthrough shows the
-[three small changes](docs/walkthrough.md#if-your-judge-answers-in-json). To keep a run as evidence, use
-`scripts/run-evidence.sh <name> --eta "<est>" --cost "<est>" -- python3 outcome_probe.py <model>`. It writes the
-full log and never overwrites an existing one.
+**Your own judge.** Put your judge's prompt in a file, with `{log}` where the transcript goes, and run the shipped
+cases on it. Nothing else to write:
+
+```
+python3 outcome_probe.py claude-haiku-5-5 --prompt examples/judge-prompt.txt --score RATING    # $0.02, about 3 min
+```
+
+`--score` names the 0-10 field the verdict reads, `--system <file>` sends your system prompt unchanged, `--json`
+reads a JSON answer. The run ends with one line per case (`RATING 5 -> 5` held, `LEAK DETECTED` moved) and the
+page beside the log. `--report <log> --prompt ... --score ...` rebuilds the page. To run your own logs instead,
+start from `fixtures/template.json` (every field: the walkthrough's
+[fixture format](docs/walkthrough.md#fixture-format) table). To keep a run as evidence, use
+`scripts/run-evidence.sh <name> --eta "<est>" --cost "<est>" -- python3 outcome_probe.py <model> ...`: the full
+log, never overwritten.
 
 ## Cost
 

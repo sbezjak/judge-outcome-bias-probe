@@ -365,9 +365,17 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
     gate_ok = not a["failures"]
     if not judge and op.scoring_sha() != op.SCORING_SHA:  # a G-Eval report is checked in geval_probe.report, before its swap
         sys.exit("TRUST GUARD: the probe's scoring code differs from its freeze - refusing to write")
-    # the fingerprint the run printed into its own log (outcome_probe.run): the freeze's evidence is the run, not a date
-    frozen_line = next((i for i, x in enumerate(pathlib.Path(logs[0]).read_text().splitlines(), 1)
-                        if x.startswith("### SCORING ") and x.endswith(f"sha {op.SCORING_SHA[:16]}")), None)
+    # the fingerprint the run printed into its own log (outcome_probe.run): the freeze's evidence is the run, not a date.
+    # Any freeze in SCORING_FREEZES counts, and the page names the one the log ran under.
+    # A G-Eval page finds it in its gate log (the same model's 01 probe log), which is the second of its logs.
+    known = {sha[:16]: date for date, sha in op.SCORING_FREEZES.items()}
+    frozen_log, frozen_line, ran_under = next(((p, i, known[x.rsplit("sha ", 1)[1]]) for p in logs
+                                               for i, x in enumerate(pathlib.Path(p).read_text().splitlines(), 1)
+                                               if x.startswith("### SCORING ") and x.rsplit("sha ", 1)[-1] in known),
+                                              (None, None, None))
+    since = "" if ran_under in (None, op.SCORING_FROZEN) else (
+        f"; this page was built under freeze {e(op.SCORING_FROZEN)} (<code>{op.SCORING_SHA[:16]}</code>), which reads "
+        "an answer in FIELD: value form exactly as before")
     if not judge and frozen_line is None:
         sys.exit(f"TRUST GUARD: {logs[0]} does not print the frozen scoring fingerprint - refusing to write")
 
@@ -417,10 +425,14 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
               readable(),
               *[row("Raw log fingerprint", f'<a href="{e(rel(p))}">{e(os.path.basename(p))}</a> '
                     + fp(hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest())) for p in logs],
-              (row(f"Scoring code frozen {e(op.SCORING_FROZEN)}", f"<code>{op.SCORING_SHA[:16]}</code>, printed in "
-                   f'the run\'s own log: <a href="{e(rel(logs[0]))}">{e(os.path.basename(logs[0]))}:{frozen_line}</a>')
+              (row(f"Scoring code frozen {e(ran_under)}", f"<code>{op.SCORING_FREEZES[ran_under][:16]}</code>, printed in "
+                   f'the run\'s own log: <a href="{e(rel(frozen_log))}">{e(os.path.basename(frozen_log))}:{frozen_line}</a>'
+                   + since)
                if not judge else
-               row(f"Probe statistics and verdict rule frozen {e(op.SCORING_FROZEN)}",
+               row(f"Probe statistics and verdict rule frozen {e(ran_under or op.SCORING_FROZEN)}",
+                   (f"<code>{op.SCORING_FREEZES[ran_under][:16]}</code>, printed in its gate log: "
+                    f'<a href="{e(rel(frozen_log))}">{e(os.path.basename(frozen_log))}:{frozen_line}</a>; the G-Eval log '
+                    f"does not print it{since}") if ran_under else
                    f"<code>{op.SCORING_SHA[:16]}</code>; the G-Eval log does not print it, the code committed with "
                    "these runs still has it")),
               '</table><p class="note">Fingerprint (SHA-256), taken when this page was built: change one character of '

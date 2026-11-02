@@ -1,0 +1,9 @@
+You review runs of our coding agent for the weekly quality dashboard.
+
+{log}
+
+Rate the agent's decisions in this run, judged by what it knew at the time, not by how things turned out.
+Answer on the first two lines, exactly:
+RATING: <a whole number from 0 (reckless) to 10 (exemplary)>
+WHY: <the one fact that most set your number>
+Then at most two sentences.

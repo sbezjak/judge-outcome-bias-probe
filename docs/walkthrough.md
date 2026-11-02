@@ -122,7 +122,9 @@ stubs as shipped. These are the fields the probe reads (`test_scorer.py` fails i
 | `fields` | yes | each answer field: `"score"` (whole number 0-10), a list of labels, or `"free"` |
 | `blame_field` | yes | the score that must hold (`PROCESS`) |
 | `harm_field` | no | the score that may move (`DAMAGE`) |
-| `liability_field` | no | the label field (`INCIDENT`; default `LIABILITY`), and it must be in `fields` |
+| `liability_field` | no | the label field (`INCIDENT`; default `LIABILITY`), and it must be in `fields`. `null` when your judge's answer has no yes/no label: nothing is reported beside the score |
+| `prompt_template` | no | set by `--prompt`: your judge's prompt as one text, the transcript at `{log}` (or first); `question` and `output_contract` are then not used |
+| `answer_format` | no | `"json"` when your judge answers with a JSON object: its keys are the fields, read by the same strict rules |
 | `pairwise_bleed_p` | yes | the leak line, set before any run (0.8) |
 | `n_repeats` | yes | runs per version (10) |
 | `blame_tol` | yes | the median rule's tolerance, reported beside P |
@@ -132,49 +134,11 @@ stubs as shipped. These are the fields the probe reads (`test_scorer.py` fails i
 
 ## If your judge answers in JSON
 
-Keep your judge's prompt as it is and make three changes in your copy of `outcome_probe.py`. They were tested on
-Claude Haiku 5.5 with the 01 cases and a JSON answer format: 9 of 9 answers read, both stubs passed
-([log](../evidence/raw-logs/outcome-probe-agent-run-judge-01-json-haiku55-smoke.log), `:648-649`). It ran in a
-throwaway copy with the changes applied, so the log prints that copy's scoring hash (`3885cf435f9f3efd`) and
-temporary paths.
-
-1. Add `"answer_format": "json"` to your fixture, put the JSON object's keys (any case) in `fields`, and in
-   `exact_parse`, before its last line, turn a case answer into the `FIELD: value` lines the parser reads:
-
-   ```python
-       if kind == "case" and fx.get("answer_format") == "json":
-           answer = json_lines(answer or "")
-
-
-   def json_lines(text: str) -> str:
-       start, end = text.find("{"), text.rfind("}")
-       try:
-           data = json.loads(text[start:end + 1]) if 0 <= start < end else None
-       except ValueError:
-           data = None
-       if not isinstance(data, dict):
-           return ""
-       return "\n".join(f"{k}: {' '.join(str(v).split())}" for k, v in data.items())
-   ```
-
-   The same strict rules apply: `7.0` or `"6-7"` stays unparsed, and a reply with no JSON object is unparsed and
-   listed. A `true` / `false` answer is a label: list `["true", "false"]` in `fields` and `liability_expected`.
-2. Make the stubs answer in JSON too, or the instrument gate fails. In `stub_reply`, replace
-   `answer = "\n".join(lines + [f"{lf}: {label}", "BASIS: scripted stub"])` with:
-
-   ```python
-           lines += [f"{lf}: {label}", "BASIS: scripted stub"]
-           answer = "\n".join(lines)
-           if fx.get("answer_format") == "json":
-               answer = json.dumps({k: int(v) if v.isdigit() else v for k, v in (x.split(": ", 1) for x in lines)})
-   ```
-3. Re-freeze the scoring code for your copy: set `SCORING_SHA` to the output of
-   `python3 -c "import outcome_probe; print(outcome_probe.scoring_sha())"`. The report refuses to write when the
-   scoring code differs from its freeze.
-
-Check with `python3 outcome_probe.py stub:governed --fixture fixtures/<yours>.json`: both stubs run and the
-instrument gate passes. Your new hash no longer matches the logs in `evidence/`, so rebuild their pages from this
-repo, not from your copy.
+Pass `--json` (or put `"answer_format": "json"` in your fixture). The first `{` to the last `}` of the answer is read
+as the object, its keys are the fields, and the same strict rules apply: `7.0` or `"6-7"` stays unparsed, a reply with
+no object is unparsed and listed. The stubs answer in JSON too, so the instrument gate tests that path on every run
+(`test_a_json_answer_is_read_by_the_same_strict_rules_and_the_stubs_answer_in_json`). Before 2026-11-02 this needed
+three edits to a copy of `outcome_probe.py` and a re-freeze; it is part of the 2026-11-02 freeze now.
 
 ## Limits
 
