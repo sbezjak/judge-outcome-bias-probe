@@ -66,6 +66,11 @@ SCORING_FREEZES = {
     "2026-11-02": "0363c1bc18faba8bea4f0eaa348bcdbdbde008ec5c4f614d451a0b0a4e39a56d",
 }
 SCORING_FROZEN, SCORING_SHA = list(SCORING_FREEZES.items())[-1]
+# What a page built under a freeze says about a log that ran under an earlier one. One line per bump, written with the
+# bump (test_every_freeze_after_the_first_says_what_it_changed): the page prints this, never a fixed sentence.
+SCORING_NOTES = {
+    "2026-11-02": "which reads an answer in FIELD: value form exactly as before",
+}
 
 
 def scoring_sha() -> str:

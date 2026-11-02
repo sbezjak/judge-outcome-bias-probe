@@ -374,8 +374,8 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
                                                if x.startswith("### SCORING ") and x.rsplit("sha ", 1)[-1] in known),
                                               (None, None, None))
     since = "" if ran_under in (None, op.SCORING_FROZEN) else (
-        f"; this page was built under freeze {e(op.SCORING_FROZEN)} (<code>{op.SCORING_SHA[:16]}</code>), which reads "
-        "an answer in FIELD: value form exactly as before")
+        f"; this page was built under freeze {e(op.SCORING_FROZEN)} (<code>{op.SCORING_SHA[:16]}</code>), "
+        f"{e(op.SCORING_NOTES[op.SCORING_FROZEN])}")  # the note written with that freeze, or KeyError: no silent claim
     if not judge and frozen_line is None:
         sys.exit(f"TRUST GUARD: {logs[0]} does not print the frozen scoring fingerprint - refusing to write")
 

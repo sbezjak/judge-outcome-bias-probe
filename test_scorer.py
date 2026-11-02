@@ -1731,6 +1731,15 @@ def test_your_own_prompt_runs_the_shipped_cases_and_changes_nothing_else():
         _refuses(lambda: op.own_judge(fx01, own, None, "RATING", False), "already contains a shipped case")
 
 
+def test_every_freeze_after_the_first_says_what_it_changed():
+    # 2026-11-02 (side note): the sentence a page prints about an older log must be written per freeze, next to its hash,
+    # never a fixed string that a later freeze would print unchanged. Every freeze after the first needs its note.
+    import outcome_probe as op
+    dates = list(op.SCORING_FREEZES)
+    assert set(op.SCORING_NOTES) == set(dates[1:]), (dates, list(op.SCORING_NOTES))
+    assert all(n.strip() and len(n) < 200 for n in op.SCORING_NOTES.values())
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:
