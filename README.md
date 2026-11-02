@@ -29,7 +29,7 @@ D: control moves - RATING 2 -> 10, P 1.000
 overall: LEAK DETECTED on 1 of 3 cases
 ```
 
-`--score` names the 0-10 field the verdict reads, `--system <file>` sends your system prompt unchanged, `--json`
+`--score` names the 0-10 field the verdict reads (any case), `--system <file>` sends your system prompt unchanged, `--json`
 reads JSON answers. No key: `stub:leaking` and `stub:governed` run the same loop on scripted judges. Your own
 logs: start from `fixtures/template.json` (six keys). `ollama:<name>` works too.
 

@@ -1745,6 +1745,37 @@ def test_every_freeze_after_the_first_says_what_it_changed():
     assert all(n.strip() and len(n) < 200 for n in op.SCORING_NOTES.values())
 
 
+def test_a_lowercase_score_field_is_read_on_both_reader_paths():
+    # Sara 2026-11-02 (Kestrel synthetic test): a team's judge answers with call_quality, in lines or as a JSON key.
+    # The parser uppercases the name it sees but matched --score as typed, so a lowercase name left 80 of 85 answers
+    # unparsed on the stubs. --prompt and a slim fixture now read the field whatever case it is typed in.
+    import contextlib
+    import io
+    import tempfile
+
+    import outcome_probe as op
+    here = pathlib.Path(__file__).parent
+    fx01 = json.loads(here.joinpath("fixtures", "agent-run-judge-01.json").read_text())
+    with tempfile.TemporaryDirectory() as d:
+        own = pathlib.Path(d, "form.txt")
+        own.write_text("Bot session:\n\n{log}\n\ncall_quality: 1 to 5\nimpact: none, minor or major\nnote: one line")
+        for as_json in (False, True):
+            fx = op.own_judge(fx01, own, None, "call_quality", as_json)
+            assert fx["blame_field"] == "CALL_QUALITY" and fx["fields"] == {"CALL_QUALITY": "score"}
+            assert op.exact_parse(fx, "case", '{"call_quality": 4, "impact": "none", "note": "x"}' if as_json
+                                  else "call_quality: 4\nimpact: none\nnote: x")["CALL_QUALITY"] == 4.0
+            _, log = _guard_log(d, fx, list(fx["cases"]))
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                a = op.report(fx, [(log, None)], pathlib.Path(d, "t.html"), "stub:leaking", public=True)
+            assert not a["failures"], (as_json, a["failures"])
+            assert "unparsed answers: 0 of" in out.getvalue(), out.getvalue()[-600:]
+        slim = json.loads(here.joinpath("fixtures", "template.json").read_text())
+        slim["blame_field"] = slim["blame_field"].lower()
+        filled, _ = op.with_defaults(slim, pathlib.Path(d, "slim.json"))
+        assert filled["blame_field"] == slim["blame_field"].upper() and filled["blame_field"] in filled["fields"]
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:

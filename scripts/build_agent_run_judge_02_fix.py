@@ -1,8 +1,8 @@
 """Builds fixtures/agent-run-judge-02-fix.json: the 01-fix design (blind turn 1, then the note revealed in the same
 conversation) on 02's real recorded trace. Cases A and D, gate, rubric and contract are copied from
 agent-run-judge-02.json; the turn-1 wording and the probe's rules from agent-run-judge-01-fix.json. Copied by code and
-asserted byte-identical, so turn 2 compares to the committed 02 run on the same model. Haiku 4.5 only (Sara
-2026-10-11): the only tier that leaked on 02, so the only one where the fix can show anything.
+asserted byte-identical, so turn 2 compares to the committed 02 run on the same model. Built for Haiku 4.5 (Sara
+2026-10-11), the only tier that had leaked on 02 by then. Opus 5.5 leaked on 02 later and ran the same fix.
 
   python3 scripts/build_agent_run_judge_02_fix.py"""
 import copy

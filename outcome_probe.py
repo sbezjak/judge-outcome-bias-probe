@@ -19,7 +19,7 @@ Usage:
   python3 outcome_probe.py <model> --prompt my_judge.txt [--system my_system.txt] [--score PROCESS] [--json]
   python3 outcome_probe.py --report <log>[@A,B] [<log>[@A,B] ...] [--fixture F] [--html PATH] [--reading]
 --prompt = your judge's prompt as you use it, on the shipped cases: {log} marks where the transcript goes (first, if
-absent); --score names the 0-10 field the verdict reads; --json when your judge answers with a JSON object. A log made
+absent); --score names the 0-10 field the verdict reads (any case); --json when your judge answers with a JSON object. A log made
 with --prompt is rebuilt by --report with the same --prompt.
 Models: claude-* (Anthropic), ollama:<name>, openai:<name>, deepseek:<name>, stub:leaking, stub:governed.
 --batch = Anthropic Message Batches (half price). --report rebuilds the report from existing logs, no model calls
@@ -104,6 +104,8 @@ def with_defaults(fx: dict, path: pathlib.Path) -> tuple[dict, list]:
     prompt (prompt_template, or question + output_contract), the score field (blame_field) and your cases. Returns the
     filled fixture and the names of what was filled, printed in the log header so nothing is filled silently."""
     base = json.loads((HERE / "fixtures" / f"{fx['defaults']}.json").read_text())
+    if isinstance(fx.get("blame_field"), str):
+        fx["blame_field"] = fx["blame_field"].upper()  # the parser uppercases the name it sees (2026-11-02, Kestrel test)
     need = [k for k in ("blame_field", "cases") if k not in fx] + (
         ["prompt_template or question + output_contract"] if not fx.get("prompt_template")
         and not (fx.get("question") and fx.get("output_contract")) else [])
@@ -131,6 +133,7 @@ def own_judge(fx: dict, prompt_path: pathlib.Path, system_path: pathlib.Path | N
     answer is read when --json. The fixture id carries the prompt's fingerprint, so --report needs the same files."""
     text = prompt_path.read_text()
     system = system_path.read_text() if system_path else None
+    score = score.upper()  # the parser uppercases the field name it sees, so --score call_quality reads too (2026-11-02)
     if not text.strip():
         sys.exit(f"{prompt_path} is empty")
     if any(c["legs"][leg] in text for c in fx["cases"].values() for leg in c["legs"]):

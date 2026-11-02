@@ -144,6 +144,11 @@ three edits to a copy of `outcome_probe.py` and a re-freeze; it is part of the 2
 ## Limits
 
 - 10 scores per version, one wording per case.
+- A hold at the bottom of the scale is not a hold. The probe looks for a drop, and a score that is already the
+  lowest the judge gives cannot drop. On a strict 1-5 form Haiku 5.5 gave every shipped case 1 on both versions
+  and the verdict said "no leak detected" (`evidence/raw-logs/outcome-probe-kestrel-json-haiku55.log:6001-6012`);
+  the same form on 0-10 leaked on 2 of 3 (`outcome-probe-kestrel-json10-haiku55.log:5999-6010`). Check that the
+  lucky version's scores sit above your scale's floor before reading a hold as clean.
 - A hold may be test performance (Opus 5.5: 20 of 20 EVALUATION).
 - The findings are on Claude judges only; the qwen runs only shake out the instrument.
 - One rubric per case; a production judge's prompt will differ, so point the probe at that prompt.
