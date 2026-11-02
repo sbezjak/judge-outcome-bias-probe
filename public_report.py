@@ -35,7 +35,7 @@ overflow-wrap:anywhere}
 .verdict{margin:.1rem 0 .5rem}.verdict .badge{font-size:13.5px;padding:.15rem .6rem;border-radius:.3rem}
 .badge{display:inline-block;padding:0 .45rem;border-radius:1rem;font-size:12px;font-weight:700;vertical-align:middle}
 .badge.leak{background:#fee4e2;color:#b42318}.badge.ok{background:#dafbe1;color:#1a7f37}
-.badge.hold{background:#eaeef2;color:#57606a}
+.badge.hold{background:#eaeef2;color:#57606a}.badge.floor{background:#fff1cc;color:#7a5a00}.overall.floor span{background:#fff1cc;color:#7a5a00}
 .seq{font:14px/1.7 ui-monospace,monospace;white-space:nowrap}.seq .leg{display:inline-block;min-width:5.5rem;
 color:#666;font:13px system-ui,sans-serif}
 .fields{margin:.3rem 0 .8rem;padding-left:1.1rem}.fields li{margin:.2rem 0}.small{font-size:12.5px;color:#666}
@@ -65,6 +65,7 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
     flags = op.expectation_flags(fx, rows, m)
     cases = [cid for cid in a["expected"]]
     leaks = [cid for cid in cases if v["cases"].get(cid, "").startswith("LEAK")]
+    floors = [cid for cid in cases if v["cases"].get(cid, "").startswith("held at the floor")]
     order = leaks + [c for c in cases if c not in leaks and fx["cases"][c]["role"] == "case"] + [
         c for c in cases if fx["cases"][c]["role"] == "control"]
     case_rows = lambda cid: [r for r in mine if r["kind"] == "case" and r["cid"] == cid]
@@ -119,6 +120,8 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
             return '<span class="badge leak">LEAK</span>'
         if line.startswith("control moves"):
             return '<span class="badge ok">MOVES</span>'
+        if line.startswith("held at the floor"):
+            return '<span class="badge floor">AT THE FLOOR</span>'
         if fx["cases"][cid]["role"] == "control":
             return '<span class="badge leak">CONTROL DID NOT MOVE</span>'
         return '<span class="badge hold">NO LEAK</span>'
@@ -185,7 +188,12 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
         banner = f'<p class="overall"><span>{e(smoke[0].upper() + smoke[1:])}</span></p>'
     elif leaks:
         n_case = sum(fx["cases"][c]["role"] == "case" for c in cases)
-        banner = f'<p class="overall leak"><span>Leak on {len(leaks)} of {n_case} cases</span></p>'
+        at_floor = f", {len(floors)} at the floor" if floors else ""
+        banner = f'<p class="overall leak"><span>Leak on {len(leaks)} of {n_case} cases{at_floor}</span></p>'
+    elif floors:  # the scorer's "no leak detected on 0 of 3 cases, 3 at the floor": a hold with no room to drop is not a clean
+        n_case = sum(fx["cases"][c]["role"] == "case" for c in cases)
+        banner = (f'<p class="overall floor"><span>No leak on {n_case - len(floors)} of {n_case} cases, '
+                  f'{len(floors)} at the floor</span></p>')
     else:
         banner = '<p class="overall"><span>No leak on any case</span></p>'
     judge = fx.get("judge")  # e.g. G-Eval: the framework's judge, with this model inside it
@@ -204,7 +212,10 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
     table = ('<table><tr><th>case</th><th>what changes</th><th>' + e(bf) + ", every run</th><th>median</th><th>P</th>"
              "<th>result</th></tr>" + "".join(trs) + "</table>"
              f'<p class="note"><b>{e(bf)}</b>: the judge\'s score for the agent\'s process, {e(scale(bf))}.<br><b>P</b>: 0.5 '
-             f"means both versions scored alike; {1 - bp:.2f} or less, or {bp:.2f} or more, is a leak.<br><b>Control "
+             f"means both versions scored alike; {1 - bp:.2f} or less, or {bp:.2f} or more, is a leak."
+             + ("<br><b>AT THE FLOOR</b>: the lucky version already sits at the lowest score this judge gave anywhere in "
+                "this run, so a drop had no room to show. The probe does not know the form's scale; the run's lowest "
+                "score stands in for it." if floors else "") + "<br><b>Control "
              f"({e(', '.join(c for c in order if fx['cases'][c]['role'] == 'control'))})</b>: the conduct changes, so "
              "the score must move - proof the judge can see a difference.</p>" + rubric())
 

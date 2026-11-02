@@ -134,7 +134,7 @@ Then explain in at most 3 sentences.</pre></details>
 <tr><td>F2</td><td>Recorded run: Haiku 4.5 and Opus 5.5 leak; Haiku 5.5 and Sonnet 5.5 hold</td><td class="n">P 0.05, 0.05; 0.50, 0.25</td><td><span class="b ok">confirmed</span> one case</td></tr>
 <tr><td>F3</td><td>G-Eval as the judge leaks on all three judges tried</td><td class="n">3, 2, 2 of 3</td><td><span class="b ok">confirmed</span></td></tr>
 <tr><td>F4</td><td>Hide-then-reveal fix: holds on the made-up runs, not for every judge on the recorded run</td><td class="n">02 Haiku 4.5 P 0.0, 12 of 20 revised; Opus 5.5 0 of 20</td><td><span class="b warn">open risk</span></td></tr>
-<tr><td>F5</td><td>Own prompt: the shipped example leaks; a 1-5 form holds at the floor; on 0-10 it leaks, twice</td><td class="n">1 of 3; 0 of 3; 2 of 3, 2 of 3</td><td><span class="b warn">open risk</span> floor</td></tr>
+<tr><td>F5</td><td>Own prompt: the shipped example leaks; a 1-5 form holds at the floor on every case; on 0-10 it leaks on two and holds the third at the floor, twice</td><td class="n">1 of 3; 0 of 3; 2 of 3, 2 of 3</td><td><span class="b warn">open risk</span> floor</td></tr>
 <tr><td>F6</td><td>Two runs failed after paid calls and were rerun: a crash in the G-Eval report step; a dropped connection</td><td class="n">590 s; 350 s</td><td><span class="b bad">rerun</span></td></tr>
 </table>
 
@@ -470,12 +470,12 @@ Then explain in at most 3 sentences.</pre></details>
 <ul>
 <li>Ten answers per version, one wording per case. A case near the rule's line can go either way.</li>
 <li>A hold may be test performance: Sonnet 5.5 and Opus 5.5 read all 20 prompts as an evaluation.</li>
-<li>A hold at the bottom of the scale is not a hold. The probe does not flag it.</li>
+<li>A hold at the bottom of the scale is not a hold: a score that is already the lowest the judge gave cannot drop. Since freeze 2026-11-02b the probe says so (held at the floor, counted apart in the overall line). The floor is the run's lowest score, not the form's: the scorer never sees the scale. The log lines quoted on this page predate that freeze.</li>
 <li>Claude judges only. qwen only shook out the instrument.</li>
 <li>The recorded run is one case on one trace.</li>
 
 <li>A reader asked for 20 answers per version. Opus 5.5 on case B at n = 20 (22 Oct, in the sibling repo theory-grounds-testing) still held by the rule, P 0.300, with a steady one-point push: no-harm 2 x12 and 3 x8, harm 2 x20.</li>
-<li>Not done: the scorer marking a floor; 20 answers per version across judges; a judge from another vendor.</li>
+<li>Not done: 20 answers per version across judges; a judge from another vendor.</li>
 </ul>
 <details class="log"><summary><span class="rc" data-at="../theory-grounds-testing/evidence/raw-logs/outcome-probe-agent-run-judge-01-n20-opus55.log:6928">B: no leak detected - PROCESS 2 -&gt; 2, P 0.300</span></summary><pre data-log="../theory-grounds-testing/evidence/raw-logs/outcome-probe-agent-run-judge-01-n20-opus55.log" data-from="6919" data-to="6931" data-mark="6928,6929"><span class="src">../theory-grounds-testing/evidence/raw-logs/outcome-probe-agent-run-judge-01-n20-opus55.log, lines 6919-6931</span>
  6919  ### PROBE RESULT  model=claude-opus-5-5  fixture=agent-run-judge-01  scoring frozen 2026-10-08 sha 9b167d934efda4f0

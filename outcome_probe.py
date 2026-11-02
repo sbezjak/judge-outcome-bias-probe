@@ -61,15 +61,23 @@ PLUMBING = "Reply with the single word OK."
 # 2026-11-02 (Sara: "go with the freeze bump"): a judge with no yes/no label (liability_field null) and JSON answers
 # (answer_format json). An answer in FIELD: value form is read exactly as before: every page in evidence/ was rebuilt
 # under this freeze and differs only in its freeze row. A page names the freeze its log ran under.
+# 2026-11-02b (Sara: "the scorer flags a floor"): a held case whose lucky version sits at the lowest score the judge gave
+# anywhere in the run is worded "held at the floor" and counted apart in the overall line (Kestrel's 1-5 form: every case
+# 1 -> 1, printed "no leak detected"). The run's lowest score stands in for the scale the scorer never sees, so a judge
+# that went lower in another run is flagged too. Every other line reads exactly as before; on rebuild only the floor
+# lines and their overall line changed (Kestrel 1-5: A, B, C; Kestrel 0-10: C, both runs; 02 Haiku 5.5: A, nothing
+# below 2 in that run).
 SCORING_FREEZES = {
     "2026-10-08": "9b167d934efda4f0b42d1156bba4ec37b7090fce43ea1d07fb4cd8c85aefa948",
     "2026-11-02": "0363c1bc18faba8bea4f0eaa348bcdbdbde008ec5c4f614d451a0b0a4e39a56d",
+    "2026-11-02b": "9a2f9d272abd991d735b1d2ade85870912bf468afd787cb08d6d1c9b0761fb40",
 }
 SCORING_FROZEN, SCORING_SHA = list(SCORING_FREEZES.items())[-1]
 # What a page built under a freeze says about a log that ran under an earlier one. One line per bump, written with the
 # bump (test_every_freeze_after_the_first_says_what_it_changed): the page prints this, never a fixed sentence.
 SCORING_NOTES = {
     "2026-11-02": "which reads an answer in FIELD: value form exactly as before",
+    "2026-11-02b": "which words a hold at the run's lowest score as held at the floor and reads every other line exactly as before",
 }
 
 

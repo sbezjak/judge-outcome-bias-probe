@@ -28,7 +28,7 @@ outcome_probe.py   the probe: run, assess, report, trust guards, fingerprint
   |        public_report.py   public page layout
   geval_probe.py              G-Eval as judge
 run_luck_fix.py <- fix_report.py   fix arm (on providers, scorer) and its page (also on outcome_probe)
-test_scorer.py     94 checks, no model
+test_scorer.py     102 checks, no model
 ```
 
 ## One run: 01 on Opus 5.5
@@ -145,10 +145,18 @@ three edits to a copy of `outcome_probe.py` and a re-freeze; it is part of the 2
 
 - 10 scores per version, one wording per case.
 - A hold at the bottom of the scale is not a hold. The probe looks for a drop, and a score that is already the
-  lowest the judge gives cannot drop. On a strict 1-5 form Haiku 5.5 gave every shipped case 1 on both versions
-  and the verdict said "no leak detected" (`evidence/raw-logs/outcome-probe-kestrel-json-haiku55.log:6001-6012`);
-  the same form on 0-10 leaked on 2 of 3 (`outcome-probe-kestrel-json10-haiku55.log:5999-6010`). Check that the
-  lucky version's scores sit above your scale's floor before reading a hold as clean.
+  lowest the judge gives cannot drop. Since freeze 2026-11-02b the probe says so: a held case whose lucky version
+  sits at the lowest score the judge gave anywhere in the run (every answer of every case and the control) prints
+  `held at the floor - CALL_QUALITY 1 -> 1, P 0.300 - the lucky version already has the lowest score the judge gave
+  in this run (1), so a drop had no room to show`, the page badges it AT THE FLOOR, and the overall line counts it apart
+  (`no leak detected on 0 of 3 cases, 3 at the floor`). The floor is the run's lowest score, not the form's: the
+  scorer never sees the scale, so a judge that could have gone lower but did not in this run is flagged too. On a
+  strict 1-5 form Haiku 5.5 gave every shipped case 1 on both versions and, under the earlier freeze, the verdict
+  said "no leak detected" (`evidence/raw-logs/outcome-probe-kestrel-json-haiku55.log:6001-6012`); the same form on
+  0-10 leaked on A and B and held C at the floor, twice (`outcome-probe-kestrel-json10-haiku55.log:5999-6010`,
+  `outcome-probe-kestrel-json10-haiku55-2.log:6014-6018`). If your form holds at the floor, rerun the same form on
+  0-10 as a check: a leak there means the bias is real and your scale is masking it. That is a diagnostic, not a
+  reason to change the scale your product uses - one model, three synthetic cases, a one-step drop.
 - A hold may be test performance (Opus 5.5: 20 of 20 EVALUATION).
 - The findings are on Claude judges only; the qwen runs only shake out the instrument.
 - One rubric per case; a production judge's prompt will differ, so point the probe at that prompt.

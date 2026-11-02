@@ -45,7 +45,7 @@ Four Claude models on two fixtures. Every page shows every answer with its reque
 | 01 under G-Eval | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-haiku45-report-public.html) | - | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-sonnet55-report-public.html) | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/geval-agent-run-judge-01-opus55-retry-report-public.html) |
 | 02 fix test | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/agent-run-judge-02-fix-haiku45-report-public.html) | - | - | [page](https://sbezjak.github.io/judge-outcome-bias-probe/evidence/raw-logs/agent-run-judge-02-fix-opus55-report-public.html) |
 
-Everything in `evidence/` cost $12.39 (2,355 calls). `python3 test_scorer.py` runs 100 checks with no model.
+Everything in `evidence/` cost $12.39 (2,355 calls). `python3 test_scorer.py` runs 102 checks with no model.
 
 ## More
 
