@@ -121,7 +121,7 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
         if line.startswith("control moves"):
             return '<span class="badge ok">MOVES</span>'
         if line.startswith("held at the floor"):
-            return '<span class="badge floor">AT THE FLOOR</span>'
+            return '<span class="badge floor">NO ROOM TO DROP</span>'
         if fx["cases"][cid]["role"] == "control":
             return '<span class="badge leak">CONTROL DID NOT MOVE</span>'
         return '<span class="badge hold">NO LEAK</span>'
@@ -213,7 +213,7 @@ def render_public(fx: dict, a: dict, rows: list, logs: list, out: pathlib.Path) 
              "<th>result</th></tr>" + "".join(trs) + "</table>"
              f'<p class="note"><b>{e(bf)}</b>: the judge\'s score for the agent\'s process, {e(scale(bf))}.<br><b>P</b>: 0.5 '
              f"means both versions scored alike; {1 - bp:.2f} or less, or {bp:.2f} or more, is a leak."
-             + ("<br><b>AT THE FLOOR</b>: the lucky version already sits at the lowest score this judge gave anywhere in "
+             + ("<br><b>NO ROOM TO DROP</b>: the lucky version already sits at the lowest score this judge gave anywhere in "
                 "this run, so a drop had no room to show. The probe does not know the form's scale; the run's lowest "
                 "score stands in for it." if floors else "") + "<br><b>Control "
              f"({e(', '.join(c for c in order if fx['cases'][c]['role'] == 'control'))})</b>: the conduct changes, so "

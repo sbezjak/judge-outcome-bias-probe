@@ -608,7 +608,7 @@ def test_the_committed_kestrel_and_own_prompt_logs_reread_under_the_floor_rule()
             page = out.read_text()
             assert page.count('class="badge floor"') == 2 * words[:3].count("held at the floor"), log
             banner = v["overall"].replace("LEAK DETECTED", "Leak").replace("no leak detected", "No leak")
-            assert f"<span>{banner}</span>" in page and "<b>AT THE FLOOR</b>: the lucky version already sits" in page, log
+            assert f"<span>{banner}</span>" in page and "<b>NO ROOM TO DROP</b>: the lucky version already sits" in page, log
         fx = op.own_judge(fx01, here / "examples" / "judge-prompt.txt", None, "RATING", False)
         with contextlib.redirect_stdout(io.StringIO()):
             a = op.report(fx, [(logs / "outcome-probe-own-prompt-haiku55.log", None)], pathlib.Path(d, "own.html"), public=True)

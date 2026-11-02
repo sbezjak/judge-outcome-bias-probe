@@ -148,7 +148,7 @@ three edits to a copy of `outcome_probe.py` and a re-freeze; it is part of the 2
   lowest the judge gives cannot drop. Since freeze 2026-11-02b the probe says so: a held case whose lucky version
   sits at the lowest score the judge gave anywhere in the run (every answer of every case and the control) prints
   `held at the floor - CALL_QUALITY 1 -> 1, P 0.300 - the lucky version already has the lowest score the judge gave
-  in this run (1), so a drop had no room to show`, the page badges it AT THE FLOOR, and the overall line counts it apart
+  in this run (1), so a drop had no room to show`, the page badges it NO ROOM TO DROP, and the overall line counts it apart
   (`no leak detected on 0 of 3 cases, 3 at the floor`). The floor is the run's lowest score, not the form's: the
   scorer never sees the scale, so a judge that could have gone lower but did not in this run is flagged too. On a
   strict 1-5 form Haiku 5.5 gave every shipped case 1 on both versions and, under the earlier freeze, the verdict
