@@ -109,27 +109,28 @@ stubs as shipped. These are the fields the probe reads (`test_scorer.py` fails i
 
 | field | required | what it does |
 |---|---|---|
-| `fixture_id` | yes | printed in every log; `--report` refuses a log of another fixture |
-| `instrument` | yes | one-line description in the log header |
+| `defaults` | slim | the shipped fixture (`agent-run-judge-01`) that fills every field you leave out: the rule check, the eval check, the thresholds, `fields`, `fixture_id`, `instrument`; the log header lists what was filled |
+| `fixture_id` | yes, or filled | printed in every log; `--report` refuses a log of another fixture |
+| `instrument` | yes, or filled | one-line description in the log header |
 | `cases` | yes | `{id: case}`, at least one with `role` `case` and one with `role` `control` |
 | case `legs` | yes | the two versions, in order. A case is no-harm then harm; the control is careless then careful (its score must rise). Neither text may appear inside the other. |
 | case `name` | yes | fills `{name}` in `question` and `output_contract` |
 | case `role` | yes | `case` (the score must hold) or `control` (the score must move) |
-| case `liability_expected` | cases | the expected `liability_field` label per leg (reported, not required) |
+| case `liability_expected` | cases, or filled | the expected `liability_field` label per leg (reported, not required) |
 | case `basis_outcome_terms` | no | words that show a BASIS line names the outcome |
 | `system` | no | your judge's system prompt, sent unchanged before every rule-check and case call (not the eval check), and printed once in the log header |
-| `question`, `output_contract` | yes | your rubric and answer format, added after each leg. `{name}` is filled in; everything else goes in as written. The answer must start with `FIELD: value` lines. |
-| `fields` | yes | each answer field: `"score"` (whole number 0-10), a list of labels, or `"free"` |
+| `question`, `output_contract` | yes, unless `prompt_template` | your rubric and answer format, added after each leg. `{name}` is filled in; everything else goes in as written. The answer must start with `FIELD: value` lines. |
+| `fields` | yes, or filled | each answer field: `"score"` (whole number 0-10), a list of labels, or `"free"` |
 | `blame_field` | yes | the score that must hold (`PROCESS`) |
 | `harm_field` | no | the score that may move (`DAMAGE`) |
 | `liability_field` | no | the label field (`INCIDENT`; default `LIABILITY`), and it must be in `fields`. `null` when your judge's answer has no yes/no label: nothing is reported beside the score |
 | `prompt_template` | no | set by `--prompt`: your judge's prompt as one text, the transcript at `{log}` (or first); `question` and `output_contract` are then not used |
 | `answer_format` | no | `"json"` when your judge answers with a JSON object: its keys are the fields, read by the same strict rules |
-| `pairwise_bleed_p` | yes | the leak line, set before any run (0.8) |
-| `n_repeats` | yes | runs per version (10) |
-| `blame_tol` | yes | the median rule's tolerance, reported beside P |
-| `principle_gate` | yes | `prompt`, `fields`, `paper_expected`: the rule question asked cold, and the answer the rule implies |
-| `eval_check` | for `--eval` | `prompt` with a `{prompt}` slot; optional `items` (default: each case's second leg) |
+| `pairwise_bleed_p` | yes, or filled | the leak line, set before any run (0.8) |
+| `n_repeats` | yes, or filled | runs per version (10) |
+| `blame_tol` | yes, or filled | the median rule's tolerance, reported beside P |
+| `principle_gate` | yes, or filled | `prompt`, `fields`, `paper_expected`: the rule question asked cold, and the answer the rule implies |
+| `eval_check` | for `--eval`, or filled | `prompt` with a `{prompt}` slot; optional `items` (default: each case's second leg) |
 | `judge` | no | set by `geval_probe.py` for its page title; not part of a fixture |
 
 ## If your judge answers in JSON

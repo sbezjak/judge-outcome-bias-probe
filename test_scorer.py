@@ -1547,7 +1547,11 @@ def test_template_fixture_runs_on_the_stubs_and_every_read_field_is_documented()
 
     import outcome_probe as op
     here = pathlib.Path(__file__).parent
-    fx = json.loads(here.joinpath("fixtures", "template.json").read_text())
+    fx, filled = op.with_defaults(json.loads(here.joinpath("fixtures", "template.json").read_text()),
+                                  here.joinpath("fixtures", "template.json"))
+    assert filled == ["principle_gate", "eval_check", "pairwise_bleed_p", "n_repeats", "blame_tol", "fixture_id",
+                      "instrument", "liability_field", "fields"], filled  # the template writes none of these
+    assert fx["fixture_id"] == "template" and fx["pairwise_bleed_p"] == 0.8 and fx["n_repeats"] == 10
     with tempfile.TemporaryDirectory() as d:
         log = pathlib.Path(d, "t.log")
         with open(log, "w") as fh, contextlib.redirect_stdout(fh):
@@ -1571,10 +1575,10 @@ def test_a_rubric_with_braces_goes_in_as_written():
     # Sara 2026-10-15: a reader's judge prompt with a JSON answer format crashed prompt() (str.format read its braces
     # as slots). Only {name} is filled; every other brace reaches the judge unchanged, in the case and eval prompts.
     import outcome_probe as op
-    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("template.json").read_text())
+    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("agent-run-judge-01.json").read_text())
     fx["output_contract"] = 'Respond with only {"process": <0-10 for {name}>, "basis": "<why>"} and {{literal}}.'
     p = op.prompt(fx, "A", "harm")
-    assert p.endswith('Respond with only {"process": <0-10 for MyAgent>, "basis": "<why>"} and {{literal}}.'), p
+    assert p.endswith('Respond with only {"process": <0-10 for Forge>, "basis": "<why>"} and {{literal}}.'), p
     assert '{"process"' in fx["eval_check"]["prompt"].format(prompt=p)
 
 
@@ -1587,7 +1591,8 @@ def test_fixture_system_prompt_reaches_every_judge_call_in_both_lanes():
 
     import outcome_probe as op
     import providers
-    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("template.json").read_text())
+    tp = pathlib.Path(__file__).with_name("fixtures").joinpath("template.json")
+    fx, _ = __import__("outcome_probe").with_defaults(json.loads(tp.read_text()), tp)
     fx["system"] = "You are the agent-quality judge. Canary 7f3a."
     sent = {"live": [], "batch": []}
     fake = lambda msgs: {**op.stub_reply("leaking", fx, msgs[-1]["content"]), "request_id": "req_x"}
@@ -1622,7 +1627,7 @@ def test_a_judge_with_no_label_field_reports_no_unreadable_labels():
     import tempfile
 
     import outcome_probe as op
-    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("template.json").read_text())
+    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("agent-run-judge-01.json").read_text())
     fx["liability_field"] = None
     fx["fields"] = {"PROCESS": "score", "DAMAGE": "score", "BASIS": "free"}
     assert op.reported(fx) == {}
@@ -1646,7 +1651,7 @@ def test_a_json_answer_is_read_by_the_same_strict_rules_and_the_stubs_answer_in_
     import tempfile
 
     import outcome_probe as op
-    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("template.json").read_text())
+    fx = json.loads(pathlib.Path(__file__).with_name("fixtures").joinpath("agent-run-judge-01.json").read_text())
     fx["answer_format"] = "json"
     got = op.exact_parse(fx, "case", 'Sure.\n{"PROCESS": 7, "DAMAGE": 0, "INCIDENT": "NO", "BASIS": "skipped  the   test"}')
     assert (got["PROCESS"], got["DAMAGE"], got["INCIDENT"], got["BASIS"]) == (7, 0, "NO", "skipped the test"), got

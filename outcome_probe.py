@@ -98,6 +98,33 @@ def prompt(fx: dict, cid: str, leg: str) -> str:
                         fx["output_contract"].replace("{name}", c["name"])])
 
 
+def with_defaults(fx: dict, path: pathlib.Path) -> tuple[dict, list]:
+    """A slim fixture (2026-11-02): "defaults" names a shipped fixture, and everything you did not write is taken from
+    it - the rule check, the eval check, the thresholds (pairwise_bleed_p, n_repeats, blame_tol). You write your judge's
+    prompt (prompt_template, or question + output_contract), the score field (blame_field) and your cases. Returns the
+    filled fixture and the names of what was filled, printed in the log header so nothing is filled silently."""
+    base = json.loads((HERE / "fixtures" / f"{fx['defaults']}.json").read_text())
+    need = [k for k in ("blame_field", "cases") if k not in fx] + (
+        ["prompt_template or question + output_contract"] if not fx.get("prompt_template")
+        and not (fx.get("question") and fx.get("output_contract")) else [])
+    if need:
+        sys.exit(f"{path}: a slim fixture needs {', '.join(need)}")
+    filled = []
+    for k in ("principle_gate", "eval_check", "pairwise_bleed_p", "n_repeats", "blame_tol"):
+        if k not in fx:
+            fx[k], _ = base[k], filled.append(k)
+    given = {"fixture_id": path.stem, "instrument": f"outcome probe on your judge ({path.name})",
+             "liability_field": None, "fields": {fx["blame_field"]: "score", "BASIS": "free"}}
+    for k, v in given.items():
+        if k not in fx:
+            fx[k], _ = v, filled.append(k)
+    for cid, c in fx["cases"].items():
+        c.setdefault("varies", "conduct" if c["role"] == "control" else "outcome")
+        if c["role"] == "case" and "liability_expected" not in c:
+            c["liability_expected"] = {leg: None for leg in c["legs"]}  # no label expected beside the score
+    return fx, filled
+
+
 def own_judge(fx: dict, prompt_path: pathlib.Path, system_path: pathlib.Path | None, score: str, as_json: bool) -> dict:
     """The fixture for --prompt (2026-11-02): the shipped cases, rule check and thresholds, your judge's prompt instead
     of the fixture's rubric. The verdict reads one field (--score); no label field is expected beside it; a JSON
@@ -883,6 +910,9 @@ def main() -> None:
     args = sys.argv[1:]
     opt = lambda name, default=None: args[args.index(name) + 1] if name in args else default
     fx = json.loads(pathlib.Path(opt("--fixture", DEFAULT_FIXTURE)).read_text())
+    filled = []
+    if fx.get("defaults"):
+        fx, filled = with_defaults(fx, pathlib.Path(opt("--fixture", DEFAULT_FIXTURE)))
     if "--prompt" in args:
         fx = own_judge(fx, pathlib.Path(opt("--prompt")), pathlib.Path(opt("--system")) if opt("--system") else None,
                        opt("--score", "PROCESS"), "--json" in args)
@@ -912,6 +942,8 @@ def main() -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
     with open(log, "w") as fh, contextlib.redirect_stdout(_Tee(sys.stdout, fh)):
         print(f"### outcome_probe {' '.join(args)}")
+        if filled:
+            print(f"### DEFAULTS from fixtures/{fx['defaults']}.json: {', '.join(filled)}")
         for s in STUBS:
             run(s, fx, order, n)
         if model not in STUBS:
