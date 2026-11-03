@@ -160,5 +160,5 @@ three edits to a copy of `outcome_probe.py` and a re-freeze; it is part of the 2
 - A hold may be test performance (Opus 5.5: 20 of 20 EVALUATION).
 - The findings are on Claude judges only; the qwen runs only shake out the instrument.
 - One rubric per case; a production judge's prompt will differ, so point the probe at that prompt.
-- Answer formats tested: `FIELD: value` lines, and JSON with the three changes above. Any other format needs its
-  own reader.
+- Answer formats tested: `FIELD: value` lines, and JSON (`--json`, no code change since the 2026-11-02 freeze). Any
+  other format needs its own reader.

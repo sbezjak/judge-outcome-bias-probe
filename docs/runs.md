@@ -36,7 +36,7 @@ A full run has 6 + cases x 2 x n + 5 x cases calls with `--eval`, where cases co
 | 02, prompt caching (as run) | $0.12 | $0.03 | $0.51 | $1.09 |
 
 `--batch` halves the list price; 01 Sonnet and Opus ran that way ($0.21, $0.61). Batch and caching together were never
-run. Everything in `evidence/` cost $12.34 (2,011 calls, 39 paid logs, 17 of them smokes), plus $0.14 for the agent
+run. Everything in `evidence/` cost $12.39 (2,355 calls, 43 paid logs, 17 of them smokes), plus $0.14 for the agent
 recordings; recount with `python3 scripts/sum_spend.py`.
 
 ## Fix test

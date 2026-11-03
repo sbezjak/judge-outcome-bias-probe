@@ -50,7 +50,7 @@ ul{margin:.3rem 0;padding-left:1.2rem}li{margin:.15rem 0}
 
 <div class="verdict">
 <p><b>Verdict:</b> <span class="b bad">BIAS PRESENT</span> Every judge tested scored the same decisions lower when the run ended badly, on at least one of three made-up runs. The drop is one point on 0-10, up to two under G-Eval.</p>
-<p><b>Real recorded run:</b> <span class="b warn">MIXED</span> Two of four judges dropped the score. One that held read every prompt as a test.</p>
+<p><b>Real recorded run:</b> <span class="b warn">MIXED</span> Two of four judges dropped the score. One held while reading every prompt as a test. One sat at its lowest score and could not drop.</p>
 <p><b>Your own judge:</b> <span class="b warn">WORKS, WITH A TRAP</span> Any prompt file runs. A strict 1-5 form sat at the bottom of its scale and could not drop, so its "no leak" meant nothing. On 0-10 the same form leaked, twice.</p>
 </div>
 
@@ -131,7 +131,7 @@ Then explain in at most 3 sentences.</pre></details>
 <table>
 <tr><th>ID</th><th>Finding</th><th>Key number</th><th>Strength</th></tr>
 <tr><td>F1</td><td>Rubric judge, made-up runs: all four judges leak on at least one case</td><td class="n">cases leaked 2, 1, 3, 1 of 3</td><td><span class="b ok">confirmed</span></td></tr>
-<tr><td>F2</td><td>Recorded run: Haiku 4.5 and Opus 5.5 leak; Haiku 5.5 and Sonnet 5.5 hold</td><td class="n">P 0.05, 0.05; 0.50, 0.25</td><td><span class="b ok">confirmed</span> one case</td></tr>
+<tr><td>F2</td><td>Recorded run: Haiku 4.5 and Opus 5.5 leak; Sonnet 5.5 holds; Haiku 5.5 at the floor, no room to drop</td><td class="n">P 0.05, 0.05; 0.25; 0.50 at 2, the run's lowest score</td><td><span class="b ok">confirmed</span> one case, one at the floor</td></tr>
 <tr><td>F3</td><td>G-Eval as the judge leaks on all three judges tried</td><td class="n">3, 2, 2 of 3</td><td><span class="b ok">confirmed</span></td></tr>
 <tr><td>F4</td><td>Hide-then-reveal fix: holds on the made-up runs, not for every judge on the recorded run</td><td class="n">02 Haiku 4.5 P 0.0, 12 of 20 revised; Opus 5.5 0 of 20</td><td><span class="b warn">open risk</span></td></tr>
 <tr><td>F5</td><td>Own prompt: the shipped example leaks; a 1-5 form holds at the floor on every case; on 0-10 it leaks on two and holds the third at the floor, twice</td><td class="n">1 of 3; 0 of 3; 2 of 3, 2 of 3</td><td><span class="b warn">open risk</span> floor</td></tr>
@@ -497,7 +497,7 @@ Then explain in at most 3 sentences.</pre></details>
 <li>Python 3 (3.15.1 on 2 Nov), Anthropic API, deepeval 4.1.0 for G-Eval.</li>
 <li>Cost: everything in <code>evidence/</code> $12.39 at list price, 2,355 paid calls (<code>scripts/sum_spend.py</code>).</li>
 <li>Scoring frozen 2026-10-08, sha <code>9b167d934efda4f0</code>, for the October runs; 2026-11-02, sha <code>0363c1bc18faba8b</code>, for the own-prompt runs. Both read answers the same way.</li>
-<li><a href="https://github.com/sbezjak/judge-outcome-bias-probe/blob/main/test_scorer.py">Tests</a>: 100 checks, no model.</li>
+<li><a href="https://github.com/sbezjak/judge-outcome-bias-probe/blob/main/test_scorer.py">Tests</a>: 102 checks, no model.</li>
 <li><a href="https://github.com/sbezjak/judge-outcome-bias-probe/blob/main/evidence/raw-logs">Full run logs</a>, every paid call with its request id. A few lines print the machine's folder; the two failed runs were made in a sibling repo and moved here.</li>
 </ul>
 
